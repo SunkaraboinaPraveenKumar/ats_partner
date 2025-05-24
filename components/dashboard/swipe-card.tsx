@@ -4,13 +4,14 @@ import { useState } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee } from "lucide-react";
+import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee, MessageSquare } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Id } from '@/convex/_generated/dataModel';
+import { useRouter } from 'next/navigation';
 
 interface SwipeCardProps {
   type: "job" | "candidate";
@@ -29,6 +30,12 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
     userId: user?.userId as Id<"users">,
     jobPostId: data._id,
   });
+  
+  const router = useRouter();
+  
+  const getOrCreateMatch = useMutation(api.matching.getOrCreateMatch);
+
+  console.log('Match data:', application);
   
   const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
@@ -61,6 +68,22 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
       } else {
         toast.error("You have already applied for this position!");
       }
+    }
+  };
+  
+  const handleChat = async () => {
+    if (!application?._id || !user?.userId) return;
+    
+    try {
+      const match = await getOrCreateMatch({
+        jobPostId: data._id,
+        userId: user.userId as Id<"users">
+      });
+      
+      const matchId = typeof match === 'string' ? match : match._id;
+      router.push(`/messages/${matchId}`);
+    } catch (error) {
+      console.error('Error getting/creating match:', error);
     }
   };
   
@@ -190,14 +213,26 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
           )}
           
           <div className="mt-auto">
-            <Button 
-              onClick={handleApply}
-              className="mt-4 w-full"
-              // disabled={!!application}
-              variant={application ? "outline" : "default"}
-            >
-              {application ? "Already Applied" : "Apply Now"}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleApply}
+                className="flex-1"
+                variant={application ? "outline" : "default"}
+              >
+                {application ? "Already Applied" : "Apply Now"}
+              </Button>
+              
+              {application && !isNaN(application.matchRatio) && (
+                <Button
+                  onClick={handleChat}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -83,7 +83,9 @@ export default defineSchema({
     matchId: v.id("matches"),
     senderId: v.id("users"),
     content: v.string(),
-    createdAt: v.number(),
+    createdAt: v.float64(),
+    isAiResponse: v.optional(v.boolean()),
+    messageType: v.optional(v.union(v.literal("text"), v.literal("ai"), v.literal("system")))
   }).index("by_matchId", ["matchId"]),
 
   applications: defineTable({

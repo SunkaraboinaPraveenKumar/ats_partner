@@ -1,21 +1,25 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
+import { ConvexError } from "convex/values";
+import { QueryCtx } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 
 // Helper function to calculate cosine similarity
 function cosineSimilarity(vec1: number[], vec2: number[]): number {
   if (vec1.length !== vec2.length) return 0;
-  
+
   let dotProduct = 0;
   let norm1 = 0;
   let norm2 = 0;
-  
+
   for (let i = 0; i < vec1.length; i++) {
     dotProduct += vec1[i] * vec2[i];
     norm1 += vec1[i] * vec1[i];
     norm2 += vec2[i] * vec2[i];
   }
-  
+
   return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
 }
 
@@ -25,12 +29,24 @@ export const createApplication = mutation({
     jobPostId: v.id("jobPosts"),
   },
   async handler(ctx, args) {
+    // Check if application already exists first
+    const existingApplication = await ctx.db
+      .query("applications")
+      .withIndex("by_userId_and_jobPostId", (q) =>
+        q.eq("userId", args.userId).eq("jobPostId", args.jobPostId)
+      )
+      .first();
+
+    if (existingApplication) {
+      throw new Error("Application already exists");
+    }
+
     // Get the job seeker profile
     const profile = await ctx.db
       .query("jobSeekerProfiles")
       .withIndex("by_userId", (q) => q.eq("userId", args.userId))
       .first();
-    
+
     if (!profile || !profile.resumeEmbedding) {
       throw new Error("Resume embedding not found");
     }
@@ -44,20 +60,8 @@ export const createApplication = mutation({
     // Calculate match ratio
     const matchRatio = cosineSimilarity(profile.resumeEmbedding, jobPost.jdEmbedding);
 
-    // Check if application already exists
-    const existingApplication = await ctx.db
-      .query("applications")
-      .withIndex("by_userId_and_jobPostId", (q) => 
-        q.eq("userId", args.userId).eq("jobPostId", args.jobPostId)
-      )
-      .first();
-
-    if (existingApplication) {
-      throw new Error("Application already exists");
-    }
-
-    // Create the application
-    return await ctx.db.insert("applications", {
+    // Create the application first
+    const applicationId = await ctx.db.insert("applications", {
       userId: args.userId,
       jobPostId: args.jobPostId,
       matchRatio,
@@ -65,6 +69,19 @@ export const createApplication = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // Then create the match
+    const matchId = await ctx.db.insert("matches", {
+      jobSeekerId: args.userId,
+      recruiterId: jobPost.recruiterId,
+      jobPostId: args.jobPostId,
+      status: "new",
+      matchReport: "",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return {applicationId,matchId};
   },
 });
 
@@ -155,7 +172,7 @@ export const updateApplicationMatchRatio = mutation({
     // Calculate attitude match
     let attitudeMatch = 0;
     if (jobSeekerProfile?.attitudeQuizResults && recruiterProfile?.attitudePreferences) {
-      const matchingPreferences = recruiterProfile.attitudePreferences.filter(pref => 
+      const matchingPreferences = recruiterProfile.attitudePreferences.filter(pref =>
         Object.values(jobSeekerProfile.attitudeQuizResults).includes(pref)
       );
       attitudeMatch = matchingPreferences.length / recruiterProfile.attitudePreferences.length;
@@ -181,9 +198,45 @@ export const getApplicationByUserAndJob = query({
   async handler(ctx, args) {
     return await ctx.db
       .query("applications")
-      .withIndex("by_userId_and_jobPostId", (q) => 
+      .withIndex("by_userId_and_jobPostId", (q) =>
         q.eq("userId", args.userId).eq("jobPostId", args.jobPostId)
       )
       .first();
   },
 });
+
+export const getApplicationForMatch = query({
+  args: {
+    matchId: v.id("matches"),
+    userId: v.id("users")
+  },
+  handler: async (ctx: QueryCtx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) {
+      throw new ConvexError("User not found.");
+    }
+
+    const match = await ctx.db.get(args.matchId);
+    if (!match) {
+      return null;
+    }
+
+    // Ensure the user is part of the match
+    if (match.jobSeekerId !== args.userId && match.recruiterId !== args.userId) {
+      throw new ConvexError("Not authorized to access this match.");
+    }
+
+    // Only job seekers have applications
+    if (match.jobSeekerId !== args.userId) {
+      return null;
+    }
+
+    return await ctx.db
+      .query("applications")
+      .withIndex("by_userId_and_jobPostId", (q) =>
+        q.eq("userId", args.userId).eq("jobPostId", match.jobPostId)
+      )
+      .first();
+  },
+});
+
