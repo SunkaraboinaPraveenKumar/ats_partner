@@ -24,9 +24,10 @@ export default defineSchema({
     }),
     attitudeTags: v.array(v.string()),
     resumeEmbedding: v.array(v.number()),
-    fileUrl:v.optional(v.string()),
+    fileUrl: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    resumeIngested: v.optional(v.boolean())
   }).index("by_userId", ["userId"]),
 
   recruiterProfiles: defineTable({
@@ -84,4 +85,18 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
   }).index("by_matchId", ["matchId"]),
+
+  applications: defineTable({
+    userId: v.id("users"),
+    jobPostId: v.id("jobPosts"),
+    matchRatio: v.number(),
+    attitudeMatch: v.optional(v.number()), // Attitude match
+    overallMatch: v.optional(v.number()), // Combined match
+    status: v.string(), // "pending", "accepted", "rejected"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_jobPostId", ["jobPostId"])
+    .index("by_userId_and_jobPostId", ["userId", "jobPostId"]),
 });

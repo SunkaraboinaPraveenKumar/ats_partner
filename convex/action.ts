@@ -3,7 +3,7 @@ import { action } from "./_generated/server.js";
 import { GoogleGenerativeAIEmbeddings } from "@langchain/google-genai";
 import { TaskType } from "@google/generative-ai";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel.js"; // Import Id type
+import { api } from "./_generated/api.js";
 
 // Helper to get Google GenAI Embeddings model
 const getEmbeddingsModel = () =>
@@ -22,12 +22,24 @@ export const ingest = action({
     handler: async (ctx, args) => {
         console.log(`Ingesting ${args.splitText.length} text chunks for user ${args.userId}`);
         try {
-             await ConvexVectorStore.fromTexts(
+            // Generate embedding for the entire resume text
+            const resumeText = args.splitText.join(" ");
+            const embedding = await getEmbeddingsModel().embedQuery(resumeText);
+            
+            // Update the job seeker profile with the embedding
+            await ctx.runMutation(api.profiles.updateJobSeekerProfile, {
+                userId: args.userId,
+                resumeEmbedding: embedding,
+            });
+
+            // Store the chunks in vector store
+            await ConvexVectorStore.fromTexts(
                 args.splitText, // Array of text chunks
                 { userId: args.userId }, // Metadata for each document - associating chunks with the user ID
                 getEmbeddingsModel(),
                 { ctx }
             );
+            
             console.log(`Ingestion completed for user ${args.userId}`);
              return 'Ingestion Completed';
         } catch (error) {
@@ -69,6 +81,29 @@ export const search = action({
         } catch (error) {
             console.error(`Error during search for user ${args.userId}:`, error);
              throw error; // Re-throw the error after logging
+        }
+    },
+});
+
+export const generateJobEmbedding = action({
+    args: {
+        description: v.string(),
+        jobId: v.id("jobPosts"),
+    },
+    handler: async (ctx, args) => {
+        try {
+            const embeddings = await getEmbeddingsModel().embedQuery(args.description);
+            
+            // Update the job post with the embedding
+            await ctx.runMutation(api.jobs.updateJobEmbedding, {
+                jobId: args.jobId,
+                embedding: embeddings,
+            });
+            
+            return 'Embedding generated and saved';
+        } catch (error) {
+            console.error(`Error generating job embedding:`, error);
+            throw error;
         }
     },
 });

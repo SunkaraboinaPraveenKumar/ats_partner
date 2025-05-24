@@ -126,3 +126,56 @@ export const updateJobPost = mutation({
     });
   },
 });
+
+export const updateJobEmbedding = mutation({
+    args: {
+        jobId: v.id("jobPosts"),
+        embedding: v.array(v.number()),
+    },
+    handler: async (ctx, args) => {
+        await ctx.db.patch(args.jobId, {
+            jdEmbedding: args.embedding,
+        });
+    },
+});
+
+export const getRecommendedJobs = query({
+  args: { userId: v.id("users") },
+  async handler(ctx, args) {
+    // Get user's resume embedding
+    const profile = await ctx.db
+      .query("jobSeekerProfiles")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
+
+    if (!profile?.resumeEmbedding) {
+      return [];
+    }
+
+    // Get all active jobs
+    const jobs = await ctx.db
+      .query("jobPosts")
+      .filter((q) => q.eq(q.field("status"), "active"))
+      .collect();
+
+    // Calculate cosine similarity for each job
+    const jobsWithScores = jobs.map(job => {
+      const similarity = cosineSimilarity(profile.resumeEmbedding, job.jdEmbedding);
+      return {
+        ...job,
+        matchScore: similarity
+      };
+    });
+
+    // Sort by match score in descending order
+    return jobsWithScores.sort((a, b) => b.matchScore - a.matchScore);
+  },
+});
+
+// Helper function for cosine similarity
+function cosineSimilarity(vecA: number[], vecB: number[]): number {
+  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+  const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+  const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+  return dotProduct / (magnitudeA * magnitudeB);
+}

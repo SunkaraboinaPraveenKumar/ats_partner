@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge"; // Assuming for skills/values dis
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/store/authStore";
 import { Id } from "@/convex/_generated/dataModel";
@@ -116,23 +116,37 @@ const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, jo
 
   const createJobPost = useMutation(api.jobs.createJobPost);
   const updateJobPost = useMutation(api.jobs.updateJobPost); // Get update mutation
+  const generateJobEmbedding = useAction(api.action.generateJobEmbedding);
   const [isLoading, setIsLoading] = useState(false);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
+      let jobId;
       if (job) { // If job prop exists, update
+        jobId = job._id;
         await updateJobPost({
           jobPostId: job._id,
-          userId: user?.userId as Id<"users">, // Pass user ID for authorization
+          userId: user?.userId as Id<"users">,
           ...values,
-          salary: values.salary || '', // Ensure salary is string
+          salary: values.salary || '',
         });
         toast.success("Job post updated successfully!");
       } else { // Otherwise, create
-        await createJobPost({ ...values, salary: values.salary || '', userId: user?.userId as Id<"users"> }); // Ensure userId type is correct
+        jobId = await createJobPost({ 
+          ...values, 
+          salary: values.salary || '', 
+          userId: user?.userId as Id<"users"> 
+        });
         toast.success("Job post created successfully!");
       }
+
+      // Generate and save embeddings
+      await generateJobEmbedding({
+        description: values.description,
+        jobId: jobId,
+      });
+
       form.reset();
       onClose();
     } catch (error) {
@@ -227,7 +241,7 @@ const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, jo
                 <FormItem>
                   <FormLabel>Salary (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., $100,000 - $120,000" {...field} />
+                    <Input placeholder="e.g., ₹100,000 - ₹120,000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

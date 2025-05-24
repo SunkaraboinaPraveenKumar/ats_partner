@@ -188,6 +188,7 @@ export default function JobSeekerSignup() {
             summary: form.getValues().summary,
             resumeText: resumeText,
             fileUrl:fileUrl,
+            resumeIngested:true,
             extractedSkills: extractedSkills,
             attitudeQuizResults: attitudeQuizResults,
           });

@@ -4,7 +4,13 @@ import { useState } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock } from "lucide-react";
+import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Id } from '@/convex/_generated/dataModel';
 
 interface SwipeCardProps {
   type: "job" | "candidate";
@@ -17,6 +23,13 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [exitX, setExitX] = useState(0);
   
+  const { user } = useAuthStore();
+  const createApplication = useMutation(api.applications.createApplication);
+  const application = useQuery(api.applications.getApplicationByUserAndJob, {
+    userId: user?.userId as Id<"users">,
+    jobPostId: data._id,
+  });
+  
   const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const threshold = 100;
     if (info.offset.x > threshold) {
@@ -27,6 +40,27 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
       setSwipeDirection("left");
       setExitX(-1000);
       onSwipe("left", type);
+    }
+  };
+  
+  const handleApply = async () => {
+    if (!user?.userId) {
+      toast.error("Please log in to apply");
+      return;
+    }
+
+    try {
+      await createApplication({
+        userId: user.userId as Id<"users">,
+        jobPostId: data._id,
+      });
+      toast.success("Application submitted successfully!");
+    } catch (error: any) {
+      if (error?.data?.message?.includes("already exists")) {
+        toast.error("You have already applied for this position");
+      } else {
+        toast.error("You have already applied for this position!");
+      }
     }
   };
   
@@ -45,7 +79,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
         }
       }}
     >
-      <Card className="w-full h-[450px] overflow-hidden">
+      <Card className="w-full h-[500px] overflow-hidden">
         <div 
           className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-b ${
             data.matchPercentage >= 90 
@@ -82,13 +116,15 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               )}
             </div>
             
-            <Badge variant="outline" className={`text-lg font-bold ${
-              data.matchPercentage >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
-              data.matchPercentage >= 80 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
-              'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-            }`}>
-              {data.matchPercentage}%
-            </Badge>
+            {type === "job" && application && (
+              <Badge variant="outline" className={`text-lg font-bold ${
+                application.matchRatio >= 0.9 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
+                application.matchRatio >= 0.8 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
+                'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+              }`}>
+                {Math.round(application.matchRatio * 100)}%
+              </Badge>
+            )}
           </div>
           
           {type === "job" ? (
@@ -99,7 +135,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               </div>
               
               <div className="flex items-center text-sm">
-                <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                <IndianRupee className="h-4 w-4 mr-2 text-muted-foreground" />
                 <span>{data.salary}</span>
               </div>
               
@@ -116,7 +152,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               
               <div>
                 <h3 className="text-sm font-medium mb-1">Description</h3>
-                <p className="text-sm text-muted-foreground line-clamp-4">{data.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">{data.description}</p>
               </div>
             </div>
           ) : (
@@ -154,15 +190,14 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
           )}
           
           <div className="mt-auto">
-            <div className="rounded-lg bg-muted p-3 text-sm">
-              <h3 className="font-medium mb-1">AI Match Insight</h3>
-              <p className="text-muted-foreground">
-                {type === "job" 
-                  ? `Your experience with ${data.skills[0]} and ${data.skills[1]} aligns perfectly with this role. The ${data.company} work environment also matches your preferred culture.`
-                  : `This candidate's expertise in ${data.skills[0]} and ${data.skills[1]} would be a great fit for your team. Their approach to problem-solving aligns well with your company values.`
-                }
-              </p>
-            </div>
+            <Button 
+              onClick={handleApply}
+              className="mt-4 w-full"
+              // disabled={!!application}
+              variant={application ? "outline" : "default"}
+            >
+              {application ? "Already Applied" : "Apply Now"}
+            </Button>
           </div>
         </CardContent>
       </Card>
