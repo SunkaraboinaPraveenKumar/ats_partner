@@ -1,0 +1,87 @@
+import { defineSchema, defineTable } from "convex/server";
+import { v } from "convex/values";
+
+export default defineSchema({
+  users: defineTable({
+    name: v.string(),
+    email: v.string(),
+    passwordHash: v.string(),
+    role: v.string(), // "job-seeker" or "recruiter"
+    createdAt: v.number(),
+  }).index("by_email", ["email"]),
+
+  jobSeekerProfiles: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    summary: v.string(),
+    resumeText: v.string(),
+    extractedSkills: v.array(v.string()),
+    attitudeQuizResults: v.object({
+      workStyle: v.string(),
+      problemSolving: v.string(),
+      teamDynamics: v.string(),
+      workEnvironment: v.string(),
+    }),
+    attitudeTags: v.array(v.string()),
+    resumeEmbedding: v.array(v.number()),
+    fileUrl:v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  recruiterProfiles: defineTable({
+    userId: v.id("users"),
+    companyName: v.string(),
+    companySize: v.string(),
+    industry: v.string(),
+    companyDescription: v.string(),
+    attitudePreferences: v.array(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
+  jobPosts: defineTable({
+    recruiterId: v.id("users"),
+    title: v.string(),
+    company: v.string(),
+    location: v.string(),
+    salary: v.string(),
+    description: v.string(),
+    requiredSkills: v.array(v.string()),
+    attitudePreferences: v.array(v.string()),
+    status: v.string(), // "active" or "inactive"
+    jdEmbedding: v.array(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_recruiterId", ["recruiterId"])
+    .index("by_status", ["status"]),
+
+  swipes: defineTable({
+    userId: v.id("users"),
+    targetId: v.union(v.id("jobPosts"), v.id("jobSeekerProfiles")),
+    direction: v.string(), // "left" or "right"
+    type: v.string(), // "job" or "candidate"
+    createdAt: v.number(),
+  }).index("by_userId_and_targetId", ["userId", "targetId"]),
+
+  matches: defineTable({
+    jobSeekerId: v.id("users"),
+    recruiterId: v.id("users"),
+    jobPostId: v.id("jobPosts"),
+    matchReport: v.string(),
+    status: v.string(), // "new", "in_progress", "archived"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_jobSeekerId", ["jobSeekerId"])
+    .index("by_recruiterId", ["recruiterId"])
+    .index("by_jobPostId", ["jobPostId"]),
+
+  messages: defineTable({
+    matchId: v.id("matches"),
+    senderId: v.id("users"),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_matchId", ["matchId"]),
+});

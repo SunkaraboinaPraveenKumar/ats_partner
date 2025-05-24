@@ -1,0 +1,186 @@
+"use client";
+
+import { useState } from "react";
+import { motion, PanInfo } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock } from "lucide-react";
+
+interface SwipeCardProps {
+  type: "job" | "candidate";
+  data: any;
+  onSwipe: (direction: "left" | "right", type: "job" | "candidate") => void;
+  blindMode?: boolean;
+}
+
+const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = false }) => {
+  const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+  const [exitX, setExitX] = useState(0);
+  
+  const handleDragEnd = (e: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    const threshold = 100;
+    if (info.offset.x > threshold) {
+      setSwipeDirection("right");
+      setExitX(1000);
+      onSwipe("right", type);
+    } else if (info.offset.x < -threshold) {
+      setSwipeDirection("left");
+      setExitX(-1000);
+      onSwipe("left", type);
+    }
+  };
+  
+  return (
+    <motion.div
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      onDragEnd={handleDragEnd}
+      animate={{ x: swipeDirection ? exitX : 0 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="relative cursor-grab active:cursor-grabbing"
+      onAnimationComplete={() => {
+        if (swipeDirection) {
+          setSwipeDirection(null);
+          setExitX(0);
+        }
+      }}
+    >
+      <Card className="w-full h-[450px] overflow-hidden">
+        <div 
+          className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-b ${
+            data.matchPercentage >= 90 
+              ? 'from-green-500/20 to-transparent' 
+              : data.matchPercentage >= 80 
+                ? 'from-amber-500/20 to-transparent' 
+                : 'from-blue-500/20 to-transparent'
+          }`}
+        />
+        
+        <CardContent className="relative h-full flex flex-col p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div className="space-y-1">
+              {type === "job" ? (
+                <>
+                  <h2 className="text-xl font-bold">{data.title}</h2>
+                  <div className="flex items-center text-muted-foreground">
+                    <Building2 className="h-4 w-4 mr-1" />
+                    <span>{data.company}</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {blindMode ? (
+                    <h2 className="text-xl font-bold">Candidate #{data.id}</h2>
+                  ) : (
+                    <h2 className="text-xl font-bold">{data.name}</h2>
+                  )}
+                  <div className="flex items-center text-muted-foreground">
+                    <Briefcase className="h-4 w-4 mr-1" />
+                    <span>{data.title}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <Badge variant="outline" className={`text-lg font-bold ${
+              data.matchPercentage >= 90 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
+              data.matchPercentage >= 80 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
+              'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+            }`}>
+              {data.matchPercentage}%
+            </Badge>
+          </div>
+          
+          {type === "job" ? (
+            <div className="space-y-4 mb-4">
+              <div className="flex items-center text-sm">
+                <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{data.location}</span>
+              </div>
+              
+              <div className="flex items-center text-sm">
+                <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span>{data.salary}</span>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Required Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {data.skills.map((skill: string, index: number) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-1">Description</h3>
+                <p className="text-sm text-muted-foreground line-clamp-4">{data.description}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4 mb-4">
+              {!blindMode && (
+                <div className="flex items-center text-sm">
+                  <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>{data.experience} of experience</span>
+                </div>
+              )}
+              
+              {!blindMode && (
+                <div className="flex items-center text-sm">
+                  <GraduationCap className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <span>{data.education}</span>
+                </div>
+              )}
+              
+              <div>
+                <h3 className="text-sm font-medium mb-2">Skills</h3>
+                <div className="flex flex-wrap gap-2">
+                  {data.skills.map((skill: string, index: number) => (
+                    <Badge key={index} variant="secondary" className="text-xs">
+                      {skill}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium mb-1">Summary</h3>
+                <p className="text-sm text-muted-foreground line-clamp-4">{data.summary}</p>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-auto">
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              <h3 className="font-medium mb-1">AI Match Insight</h3>
+              <p className="text-muted-foreground">
+                {type === "job" 
+                  ? `Your experience with ${data.skills[0]} and ${data.skills[1]} aligns perfectly with this role. The ${data.company} work environment also matches your preferred culture.`
+                  : `This candidate's expertise in ${data.skills[0]} and ${data.skills[1]} would be a great fit for your team. Their approach to problem-solving aligns well with your company values.`
+                }
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Swipe indicators */}
+      <div className={`absolute top-1/2 left-6 -translate-y-1/2 bg-red-500 text-white p-3 rounded-full transition-opacity ${
+        swipeDirection === "left" ? "opacity-100" : "opacity-0"
+      }`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>
+      </div>
+      
+      <div className={`absolute top-1/2 right-6 -translate-y-1/2 bg-green-500 text-white p-3 rounded-full transition-opacity ${
+        swipeDirection === "right" ? "opacity-100" : "opacity-0"
+      }`}>
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>
+      </div>
+    </motion.div>
+  );
+};
+
+export default SwipeCard;
