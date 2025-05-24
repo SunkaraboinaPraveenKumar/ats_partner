@@ -23,21 +23,21 @@ function RecruiterProfilePage() {
 
   // Show loading state
   if (recruiterProfile === undefined) {
-    return <div className="container py-8 text-center">Loading profile...</div>;
+    return <div className=" py-8 text-center">Loading profile...</div>;
   }
 
   // Show message if user is not a recruiter or profile not found
   if (!isLoggedIn || user?.role !== 'recruiter') {
-    return <div className="container py-8 text-center">Access Denied: Only recruiters can view this page.</div>;
+    return <div className=" py-8 text-center">Access Denied: Only recruiters can view this page.</div>;
   }
 
   if (!recruiterProfile) {
-     return <div className="container py-8 text-center">Recruiter profile not found.</div>;
+     return <div className=" py-8 text-center">Recruiter profile not found.</div>;
   }
 
   // Display profile details
   return (
-    <div className="container py-8">
+    <div className=" py-8">
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Recruiter Profile</CardTitle>

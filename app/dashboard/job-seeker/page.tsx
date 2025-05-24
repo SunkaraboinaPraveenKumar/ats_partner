@@ -272,7 +272,7 @@ function JobSeekerDashboardPage() {
   // Loading and access control
   if (jobPosts === undefined) {
     return (
-      <div className="container py-8 text-center">
+      <div className=" py-8 text-center">
         <div className="animate-pulse">Loading job posts...</div>
       </div>
     );
@@ -280,7 +280,7 @@ function JobSeekerDashboardPage() {
 
   if (!isLoggedIn || user?.role !== 'job-seeker') {
     return (
-      <div className="container py-8 text-center">
+      <div className=" py-8 text-center">
         <div className="text-lg text-muted-foreground">
           Access Denied: Only job seekers can view this page.
         </div>
@@ -299,7 +299,7 @@ function JobSeekerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className=" mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>

@@ -108,22 +108,22 @@ function JobSeekerProfilePage() {
 
   // Show loading state
   if (jobSeekerProfile === undefined) {
-    return <div className="container py-8 text-center">Loading profile...</div>;
+    return <div className=" py-8 text-center">Loading profile...</div>;
   }
 
   // Show message if user is not logged in or not a job seeker
   if (!isLoggedIn || user?.role !== 'job-seeker') {
-    return <div className="container py-8 text-center">Access Denied: Only job seekers can view this page.</div>;
+    return <div className=" py-8 text-center">Access Denied: Only job seekers can view this page.</div>;
   }
 
   // Show message if job seeker profile not found (might need a flow to create it)
   if (!jobSeekerProfile) {
-    return <div className="container py-8 text-center">Job seeker profile not found. Please create your profile.</div>; // TODO: Add link/button to create profile
+    return <div className=" py-8 text-center">Job seeker profile not found. Please create your profile.</div>; // TODO: Add link/button to create profile
   }
 
   // Display profile details
   return (
-    <div className="container py-8">
+    <div className=" py-8">
       <Card className="max-w-3xl mx-auto">
         <CardHeader className='flex justify-between items-center'>
           <CardTitle>Your Profile</CardTitle>

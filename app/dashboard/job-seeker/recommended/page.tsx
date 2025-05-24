@@ -166,12 +166,12 @@ export default function RecommendedJobsPage() {
   ].filter(Boolean).length;
 
   if (!recommendedJobs) {
-    return <div className="container py-8 text-center">Loading recommended jobs...</div>;
+    return <div className=" py-8 text-center">Loading recommended jobs...</div>;
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
+      <div className=" mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>

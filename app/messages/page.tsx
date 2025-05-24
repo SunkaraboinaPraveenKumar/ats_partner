@@ -148,7 +148,7 @@ export default function Messages() {
   };
   
   return (
-    <div className="container py-8">
+    <div className=" py-8">
       <h1 className="text-3xl font-bold mb-8">Messages</h1>
       
       <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-16rem)]">
