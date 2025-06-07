@@ -138,14 +138,17 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
                 </>
               )}
             </div>
-            
-            {type === "job" && application && (
+            {type === "job" && (
               <Badge variant="outline" className={`text-lg font-bold ${
-                application.matchRatio >= 0.9 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
-                application.matchRatio >= 0.8 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
+                (application && application.matchRatio >= 0.9) || (!application && data.matchPercentage >= 90) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
+                (application && application.matchRatio >= 0.8) || (!application && data.matchPercentage >= 80) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
                 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
               }`}>
-                {Math.round(application.matchRatio * 100)}%
+                {application
+                  ? Math.round(application.matchRatio * 100)
+                  : typeof data.matchPercentage === 'number'
+                    ? data.matchPercentage
+                    : '--'}%
               </Badge>
             )}
           </div>
