@@ -88,7 +88,6 @@ function JobSeekerDashboardPage() {
   });
   
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [currentCardIndex, setCurrentCardIndex] = useState(0);
 
   // Fetch data
   const jobPosts = useQuery(api.jobs.getJobPosts, { status: "active" });
@@ -228,7 +227,6 @@ function JobSeekerDashboardPage() {
   // Handle filter updates
   const updateFilter = (key: keyof FilterState, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
-    setCurrentCardIndex(0); // Reset to first card when filters change
   };
 
   const clearFilters = () => {
@@ -240,7 +238,6 @@ function JobSeekerDashboardPage() {
       applicationStatus: 'all',
       company: ''
     });
-    setCurrentCardIndex(0);
   };
 
   const toggleSkill = (skill: string) => {
@@ -257,16 +254,6 @@ function JobSeekerDashboardPage() {
       ...prev,
       selectedSkills: prev.selectedSkills.filter(s => s !== skill)
     }));
-  };
-
-  const handleSwipe = (direction: "left" | "right", type: "job" | "candidate") => {
-    console.log(`Swiped ${type} to the ${direction}`);
-    // Move to next card
-    if (currentCardIndex < filteredJobs.length - 1) {
-      setCurrentCardIndex(prev => prev + 1);
-    } else {
-      setCurrentCardIndex(0); // Loop back to first card
-    }
   };
 
   // Loading and access control
@@ -549,29 +536,19 @@ function JobSeekerDashboardPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex justify-center">
-            <div className="w-full max-w-md">
-              {filteredJobs.length > 0 && currentCardIndex < filteredJobs.length && (
-                <div className="relative">
-                  <SwipeCard
-                    key={`${filteredJobs[currentCardIndex]._id}-${currentCardIndex}`}
-                    type="job"
-                    data={{
-                      ...filteredJobs[currentCardIndex],
-                      skills: filteredJobs[currentCardIndex].requiredSkills,
-                    }}
-                    onSwipe={handleSwipe}
-                  />
-                  
-                  {/* Card Counter */}
-                  <div className="text-center mt-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {currentCardIndex + 1} of {filteredJobs.length} jobs
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <div key={job._id}>
+                <SwipeCard
+                  type="job"
+                  data={{
+                    ...job,
+                    skills: job.requiredSkills,
+                  }}
+                  onSwipe={() => {}} // No swipe needed, can be a no-op
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>

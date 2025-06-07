@@ -455,30 +455,20 @@ export default function RecommendedJobsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex justify-center">
-            <div className="w-full max-w-md">
-              {filteredJobs.length > 0 && currentCardIndex < filteredJobs.length && (
-                <div className="relative">
-                  <SwipeCard
-                    key={`${filteredJobs[currentCardIndex]._id}-${currentCardIndex}`}
-                    type="job"
-                    data={{
-                      ...filteredJobs[currentCardIndex],
-                      skills: filteredJobs[currentCardIndex].requiredSkills,
-                      matchPercentage: Math.round(filteredJobs[currentCardIndex].matchScore * 100)
-                    }}
-                    onSwipe={handleSwipe}
-                  />
-                  
-                  {/* Card Counter */}
-                  <div className="text-center mt-4">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">
-                      {currentCardIndex + 1} of {filteredJobs.length} jobs
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job) => (
+              <div key={job._id}>
+                <SwipeCard
+                  type="job"
+                  data={{
+                    ...job,
+                    skills: job.requiredSkills,
+                    matchPercentage: Math.round(job.matchScore * 100),
+                  }}
+                  onSwipe={() => {}} // No swipe needed, can be a no-op
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>
