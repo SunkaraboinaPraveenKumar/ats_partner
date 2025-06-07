@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle, BriefcaseBusiness, LogIn, Menu, X, LayoutDashboard } from "lucide-react";
+import { UserCircle, BriefcaseBusiness, LogIn, Menu, X, LayoutDashboard, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -87,6 +87,14 @@ const Header = () => {
                     <LogIn className="mr-2 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="https://ai-career-coach-agent-livid.vercel.app/" target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" className="gap-2">
+                        <Sparkles className="h-4 w-4" />
+                        AI Career Coach
+                      </Button>
+                    </Link>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
@@ -163,6 +171,12 @@ const Header = () => {
                   </Button>
                 </Link>
               )}
+              <Link href="https://ai-career-coach-agent-livid.vercel.app/" target="_blank" rel="noopener noreferrer" className="w-full">
+                <Button variant="outline" className="w-full justify-start gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  AI Career Coach
+                </Button>
+              </Link>
               <Button
                 variant="ghost"
                 className="w-full justify-start gap-2 text-destructive hover:text-destructive"

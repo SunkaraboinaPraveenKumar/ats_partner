@@ -99,16 +99,49 @@ export default function RecommendedJobsPage() {
     const appliedJobIds = new Set(applications?.map(app => app.jobPostId) || []);
     
     return recommendedJobs.filter(job => {
-      // Apply all the same filters as in job-seeker page
+      // Search filter (job title or company)
       if (filters.search && filters.search.trim()) {
         const searchLower = filters.search.toLowerCase().trim();
         const titleMatch = job.title?.toLowerCase().includes(searchLower);
         const companyMatch = job.company?.toLowerCase().includes(searchLower);
         if (!titleMatch && !companyMatch) return false;
       }
-      
-      // ... (rest of the filter logic from job-seeker page)
-      
+      // Company filter
+      if (filters.company && filters.company.trim() && job.company !== filters.company) {
+        return false;
+      }
+      // Location filter
+      if (filters.location && filters.location.trim() && job.location !== filters.location) {
+        return false;
+      }
+      // Salary range filter
+      if (filters.salaryRange !== 'any') {
+        const [min, max] = filters.salaryRange.split('-').map(Number);
+        const jobSalary = Number(job?.salary);
+        // Handle "25+ LPA" case
+        if (filters.salaryRange === '2500000-999999999') {
+          if (jobSalary < 2500000) return false;
+        } else {
+          if (jobSalary < min || jobSalary > max) return false;
+        }
+      }
+      // Skills filter
+      if (filters.selectedSkills && filters.selectedSkills.length > 0) {
+        const jobSkills = job.requiredSkills || [];
+        const hasMatchingSkill = filters.selectedSkills.some(skill => 
+          jobSkills.some(jobSkill => 
+            jobSkill.toLowerCase().trim() === skill.toLowerCase().trim()
+          )
+        );
+        if (!hasMatchingSkill) return false;
+      }
+      // Application status filter
+      if (filters.applicationStatus === 'applied' && !appliedJobIds.has(job._id)) {
+        return false;
+      }
+      if (filters.applicationStatus === 'not-applied' && appliedJobIds.has(job._id)) {
+        return false;
+      }
       return true;
     });
   }, [recommendedJobs, applications, filters]);
