@@ -25,9 +25,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -77,6 +78,7 @@ export default function JobSeekerSignup() {
   const router = useRouter();
   const {user, isLoggedIn} = useAuthStore();
   const authStore = useAuthStore();
+  const ingestResume = useAction(api.action.ingest);
 
   const handleNext = async () => {
     let isValid = false;
@@ -193,6 +195,18 @@ export default function JobSeekerSignup() {
             attitudeQuizResults: attitudeQuizResults,
           });
           console.log("Profile creation successful! Profile ID:", profileId);
+
+          // Immediately trigger resume embedding ingestion
+          const splitter = new RecursiveCharacterTextSplitter({
+            chunkSize: 1000,
+            chunkOverlap: 200,
+          });
+          const docs = await splitter.createDocuments([resumeText]);
+          const splitText = docs.map(doc => doc.pageContent);
+          await ingestResume({
+            splitText,
+            userId: authenticatedUserId,
+          });
 
           toast.success("Account and profile created successfully!");
           router.push("/dashboard/job-seeker");
