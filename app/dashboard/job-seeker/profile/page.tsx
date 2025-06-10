@@ -18,7 +18,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { EyeIcon, Loader2, Upload } from 'lucide-react';
+import { ExternalLink, EyeIcon, Loader2, Upload } from 'lucide-react';
 import { useMutation } from "convex/react";
 import { useAction } from "convex/react";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -137,7 +137,7 @@ function JobSeekerProfilePage() {
                 <Dialog open={isPdfModalOpen} onOpenChange={setIsPdfModalOpen}>
                   <DialogTrigger asChild>
                     <Button variant="outline" disabled={isUploading}>
-                      <EyeIcon className='h-5 w-5 mr-2'/>
+                      <EyeIcon className='h-5 w-5 mr-2' />
                       View Current Resume
                     </Button>
                   </DialogTrigger>
@@ -168,7 +168,7 @@ function JobSeekerProfilePage() {
                   </DialogContent>
                 </Dialog>
               )}
-              
+
               <div className="relative">
                 <input
                   type="file"
@@ -245,33 +245,36 @@ function JobSeekerProfilePage() {
           ) : (
             applications?.map((app) => (
               <Card key={app._id} className="p-4">
-                <Link href={`/dashboard/job-seeker/applications/${app._id}`} className="block hover:underline">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium">{app.jobPost?.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {app.jobPost?.company} - {app.jobPost?.location}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={
-                        app.status === "accepted" ? "default" :
-                        app.status === "rejected" ? "destructive" :
-                        "outline"
-                      }>
-                        {app.status}
-                      </Badge>
-                      <Badge variant="secondary">
-                        Match: {Math.round(app.matchRatio * 100)}%
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="mt-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="font-medium flex gap-2 items-center justify-start">
+                      {app.jobPost?.title}
+                      <Link href={`/dashboard/job-seeker/applications/${app._id}`}>
+                        <ExternalLink className='h-4 w-4 text-primary' />
+                      </Link>
+                    </h4>
                     <p className="text-sm text-muted-foreground">
-                      Applied on {new Date(app.createdAt).toLocaleDateString()}
+                      {app.jobPost?.company} - {app.jobPost?.location}
                     </p>
                   </div>
-                </Link>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      app.status === "accepted" ? "default" :
+                        app.status === "rejected" ? "destructive" :
+                          "outline"
+                    }>
+                      {app.status}
+                    </Badge>
+                    <Badge variant="secondary">
+                      Match: {Math.round(app.matchRatio * 100)}%
+                    </Badge>
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <p className="text-sm text-muted-foreground">
+                    Applied on {new Date(app.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
               </Card>
             ))
           )}

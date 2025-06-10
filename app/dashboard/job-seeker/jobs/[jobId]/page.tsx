@@ -70,7 +70,7 @@ export default function JobDetailPage() {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="text-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+                    <Loader2 className="h-5 w-5 animate-spin text-primary mx-auto mb-4" />
                     <p className="text-gray-600 dark:text-gray-400">Loading job details...</p>
                 </div>
             </div>
@@ -95,22 +95,22 @@ export default function JobDetailPage() {
             <Card className="p-6 shadow-lg rounded-lg">
                 <CardHeader className="relative">
                     <CardTitle className="flex items-center gap-2 text-2xl font-bold mb-2">
-                        <Briefcase className="h-6 w-6 text-primary" /> {title}
+                        <Briefcase className="h-5 w-5 text-primary" /> {title}
                     </CardTitle>
                     <CardDescription className="text-lg text-gray-700 dark:text-gray-300">
                         {company}
                     </CardDescription>
                     <div className="flex flex-wrap items-center gap-4 mt-4 text-gray-600 dark:text-gray-400">
                         <span className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" /> {location}
+                            <MapPin className="h-5 w-5 text-primary" /> {location}
                         </span>
                         {salary && (
                             <span className="flex items-center gap-1">
-                                <IndianRupee className="h-4 w-4" /> {salary}
+                                <IndianRupee className="h-5 w-5 text-primary" /> {salary}
                             </span>
                         )}
                         <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" /> Posted on {new Date(_creationTime).toLocaleDateString()}
+                            <Calendar className="h-5 w-5 text-primary" /> Posted on {new Date(_creationTime).toLocaleDateString()}
                         </span>
                     </div>
                     <div className="absolute top-6 right-6 flex gap-3">
@@ -118,7 +118,7 @@ export default function JobDetailPage() {
                             <Link href={`/dashboard/job-seeker/applications/${application._id}`}>
                                 <Button variant="outline">
                                     Already Applied
-                                    <ExternalLink className="ml-2 h-4 w-4" />
+                                    <ExternalLink className="ml-2 h-5 w-5 text-primary" />
                                 </Button>
                             </Link>
                         ) : (
@@ -134,7 +134,7 @@ export default function JobDetailPage() {
                                 onClick={handleChat}
                                 variant="outline"
                             >
-                                <MessageSquare className="h-4 w-4 mr-2" />
+                                <MessageSquare className="h-5 w-5 mr-2 text-primary" />
                                 Chat
                             </Button>
                         )}
@@ -144,7 +144,7 @@ export default function JobDetailPage() {
                     <Separator />
                     <div>
                         <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                            <Lightbulb className="h-5 w-5 text-accent" /> Job Description
+                            <Lightbulb className="h-5 w-5 text-primary" /> Job Description
                         </h3>
                         <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{description}</p>
                     </div>
@@ -152,9 +152,9 @@ export default function JobDetailPage() {
                     {requiredSkills && requiredSkills.length > 0 && (
                         <>
                             <Separator />
-                            <div>
+                            <div className="flex flex-col items-start">
                                 <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                                    <Lightbulb className="h-5 w-5 text-accent" /> Required Skills
+                                    <Lightbulb className="h-5 w-5 text-primary" /> Required Skills
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
                                     {requiredSkills.map((skill: string, index: number) => (
@@ -170,9 +170,9 @@ export default function JobDetailPage() {
                     {attitudePreferences && attitudePreferences.length > 0 && (
                         <>
                             <Separator />
-                            <div>
+                            <div className="flex flex-col items-start">
                                 <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                                    <User className="h-5 w-5 text-accent" /> Attitude Preferences
+                                    <User className="h-5 w-5 text-primary" /> Attitude Preferences
                                 </h3>
                                 <div className="flex flex-wrap gap-2">
                                     {attitudePreferences.map((pref: string, index: number) => (
