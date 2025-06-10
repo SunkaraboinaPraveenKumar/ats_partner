@@ -24,6 +24,7 @@ import { useAction } from "convex/react";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { toast } from "sonner";
 import { generateUploadUrl } from '@/convex/files';
+import Link from 'next/link';
 
 function JobSeekerProfilePage() {
   const { user, isLoggedIn } = useAuthStore();
@@ -244,31 +245,33 @@ function JobSeekerProfilePage() {
           ) : (
             applications?.map((app) => (
               <Card key={app._id} className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-medium">{app.jobPost?.title}</h4>
+                <Link href={`/dashboard/job-seeker/applications/${app._id}`} className="block hover:underline">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium">{app.jobPost?.title}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {app.jobPost?.company} - {app.jobPost?.location}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        app.status === "accepted" ? "default" :
+                        app.status === "rejected" ? "destructive" :
+                        "outline"
+                      }>
+                        {app.status}
+                      </Badge>
+                      <Badge variant="secondary">
+                        Match: {Math.round(app.matchRatio * 100)}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="mt-2">
                     <p className="text-sm text-muted-foreground">
-                      {app.jobPost?.company} - {app.jobPost?.location}
+                      Applied on {new Date(app.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={
-                      app.status === "accepted" ? "default" :
-                      app.status === "rejected" ? "destructive" :
-                      "outline"
-                    }>
-                      {app.status}
-                    </Badge>
-                    <Badge variant="secondary">
-                      Match: {Math.round(app.matchRatio * 100)}%
-                    </Badge>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm text-muted-foreground">
-                    Applied on {new Date(app.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
+                </Link>
               </Card>
             ))
           )}

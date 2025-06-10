@@ -240,3 +240,29 @@ export const getApplicationForMatch = query({
   },
 });
 
+export const getApplicationById = query({
+  args: {
+    applicationId: v.id("applications"),
+  },
+  handler: async (ctx, args) => {
+    const application = await ctx.db.get(args.applicationId);
+
+    if (!application) {
+      return null;
+    }
+
+    const jobPost = await ctx.db.get(application.jobPostId);
+    const user = await ctx.db.get(application.userId);
+
+    if (!jobPost || !user) {
+      throw new ConvexError("Related job post or user not found.");
+    }
+
+    return {
+      ...application,
+      jobPost,
+      user,
+    };
+  },
+});
+

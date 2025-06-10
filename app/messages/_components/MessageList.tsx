@@ -39,12 +39,12 @@ const MessageList: React.FC<MessageListProps> = ({
       .replace(/\*(.*?)\*/g, '<em>$1</em>')
       // Line breaks
       .replace(/\n/g, '<br>')
-      // Simple bullet points
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
-      // Wrap consecutive list items in ul
-      .replace(/(<li>.*<\/li>(\s*<br>\s*<li>.*<\/li>)*)/g, '<ul>$1</ul>')
-      // Remove br tags between list items
-      .replace(/<\/li>\s*<br>\s*<li>/g, '</li><li>');
+      // Improved bullet points
+      .replace(/^- (.+)$/gm, '<li style="margin-left: 20px;">$1</li>') // Add margin-left for indentation
+      .replace(/(\n|^)(<li.*?<\/li>)+/g, '$1<ul>$2</ul>'); // Wrap consecutive list items in ul
+
+    // Clean up empty <ul></ul> tags that might appear if there are no list items
+    formatted = formatted.replace(/<ul><\/ul>/g, '');
 
     return formatted;
   };
