@@ -16,6 +16,8 @@ export async function callGroqApi({
   job,
   messages,
   application,
+  recruiterProfile,
+  jobSeekerProfile,
   onNewMessage,
   onError,
   onComplete,
@@ -24,6 +26,8 @@ export async function callGroqApi({
   job: Doc<"jobPosts">;
   messages: { role: "user" | "assistant"; content: string }[];
   application?: Doc<"applications"> | null;
+  recruiterProfile?: Doc<"recruiterProfiles"> | null;
+  jobSeekerProfile?: Doc<"jobSeekerProfiles"> | null;
   onNewMessage: (content: string) => void;
   onError: (error: string) => void;
   onComplete: (finalContent: string) => void; // Pass final content to onComplete
@@ -39,6 +43,8 @@ export async function callGroqApi({
         job,
         messages,
         application,
+        recruiterProfile,
+        jobSeekerProfile,
       }),
     });
 
@@ -123,6 +129,17 @@ export default function ChatPage() {
   const messages = messagesAndJob?.messages;
   const jobPost = messagesAndJob?.jobPost;
 
+  // Fetch recruiter profile (company details)
+  const recruiterProfile = useQuery(
+    api.profiles.getRecruiterProfile,
+    jobPost?.recruiterId ? { userId: jobPost.recruiterId as Id<"users"> } : "skip"
+  );
+
+  const jobSeekerProfile = useQuery(
+    api.profiles.getJobSeekerProfile,
+    user ? { userId: user.userId as Id<"users"> } : "skip"
+  );
+
   // Fetch user's application
   const application = useQuery(api.applications.getApplicationForMatch, { 
     matchId,
@@ -176,6 +193,8 @@ export default function ChatPage() {
         job: jobPost,
         messages: messagesForApi,
         application,
+        recruiterProfile,
+        jobSeekerProfile,
         onNewMessage: (content) => {
           setStreamingContent(prev => prev + content);
         },

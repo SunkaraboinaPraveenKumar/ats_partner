@@ -50,7 +50,10 @@ export default function JobDetailPage() {
     };
 
     const handleChat = async () => {
-        if (!application?._id || !user?.userId) return;
+        if (!user?.userId) {
+            toast.error("Please log in to start a chat.");
+            return;
+        }
 
         try {
             const match = await getOrCreateMatch({
@@ -129,15 +132,13 @@ export default function JobDetailPage() {
                                 Apply Now
                             </Button>
                         )}
-                        {application && (
-                            <Button
-                                onClick={handleChat}
-                                variant="outline"
-                            >
-                                <MessageSquare className="h-5 w-5 mr-2 text-primary" />
-                                Chat
-                            </Button>
-                        )}
+                        <Button
+                            onClick={handleChat}
+                            variant="outline"
+                        >
+                            <MessageSquare className="h-5 w-5 mr-2 text-primary" />
+                            Chat with AI
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">

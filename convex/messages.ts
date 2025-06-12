@@ -76,17 +76,20 @@ export const getMessages = query({
   async handler(ctx, args) {
     const user = await ctx.db.get(args.userId);
     if (!user) {
-      throw new ConvexError("User not found.");
+      // Instead of throwing, return null if user not found (though userId is usually reliable from auth)
+      return null; 
     }
 
     const match = await ctx.db.get(args.matchId);
     if (!match) {
-      throw new ConvexError("Match not found.");
+      // If match not found, return null instead of throwing an error
+      return null; 
     }
 
     // Check if user is part of this match
     if (match.jobSeekerId !== args.userId && match.recruiterId !== args.userId) {
-      throw new ConvexError("Not authorized to access this match.");
+      // If not authorized, return null or an empty set as per client-side expectation
+      return null;
     }
 
     const messages = await ctx.db
