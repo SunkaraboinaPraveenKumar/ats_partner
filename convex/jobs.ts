@@ -179,3 +179,12 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const magnitudeB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
   return dotProduct / (magnitudeA * magnitudeB);
 }
+
+export const getJobPostById = query({
+  args: {
+    jobId: v.id("jobPosts"),
+  },
+  async handler(ctx, args) {
+    return await ctx.db.get(args.jobId);
+  },
+});

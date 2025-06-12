@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee, MessageSquare } from "lucide-react";
+import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee, MessageSquare, ExternalLink } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/store/authStore";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Id } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
+import Link from "next/link";
 
 interface SwipeCardProps {
   type: "job" | "candidate";
@@ -115,10 +116,15 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
         
         <CardContent className="relative h-full flex flex-col p-6">
           <div className="flex justify-between items-start mb-4">
-            <div className="space-y-1">
+            <div className="space-y-1 flex-grow flex-shrink overflow-hidden max-w-[calc(100%-70px)]">
               {type === "job" ? (
                 <>
-                  <h2 className="text-xl font-bold">{data.title}</h2>
+                  <h2 className="text-xl font-bold flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
+                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{data.title}</span>
+                    <Link href={`/dashboard/job-seeker/jobs/${data._id}`} className="text-primary hover:text-primary/80 flex-shrink-0">
+                      <ExternalLink className="h-5 w-5" />
+                    </Link>
+                  </h2>
                   <div className="flex items-center text-muted-foreground">
                     <Building2 className="h-4 w-4 mr-1" />
                     <span>{data.company}</span>
@@ -139,7 +145,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               )}
             </div>
             {type === "job" && (
-              <Badge variant="outline" className={`text-lg font-bold ${
+              <Badge variant="outline" className={`text-lg font-bold flex-shrink-0 ${
                 (application && application.matchRatio >= 0.9) || (!application && data.matchPercentage >= 90) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
                 (application && application.matchRatio >= 0.8) || (!application && data.matchPercentage >= 80) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
                 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
@@ -217,13 +223,22 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
           
           <div className="mt-auto">
             <div className="flex gap-2">
-              <Button 
-                onClick={handleApply}
-                className="flex-1"
-                variant={application ? "outline" : "default"}
-              >
-                {application ? "Already Applied" : "Apply Now"}
-              </Button>
+              {application ? (
+                <Link href={`/dashboard/job-seeker/applications/${application._id}`} className="flex-1">
+                  <Button variant="outline" className="w-full">
+                    Already Applied
+                    <ExternalLink className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              ) : (
+                <Button 
+                  onClick={handleApply}
+                  className="flex-1"
+                  variant="default"
+                >
+                  Apply Now
+                </Button>
+              )}
               
               {application && !isNaN(application.matchRatio) && (
                 <Button

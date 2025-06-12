@@ -16,6 +16,8 @@ export async function callGroqApi({
   job,
   messages,
   application,
+  recruiterProfile,
+  jobSeekerProfile,
   onNewMessage,
   onError,
   onComplete,
@@ -24,6 +26,8 @@ export async function callGroqApi({
   job: Doc<"jobPosts">;
   messages: { role: "user" | "assistant"; content: string }[];
   application?: Doc<"applications"> | null;
+  recruiterProfile?: Doc<"recruiterProfiles"> | null;
+  jobSeekerProfile?: Doc<"jobSeekerProfiles"> | null;
   onNewMessage: (content: string) => void;
   onError: (error: string) => void;
   onComplete: (finalContent: string) => void; // Pass final content to onComplete
@@ -39,6 +43,8 @@ export async function callGroqApi({
         job,
         messages,
         application,
+        recruiterProfile,
+        jobSeekerProfile,
       }),
     });
 
@@ -123,6 +129,17 @@ export default function ChatPage() {
   const messages = messagesAndJob?.messages;
   const jobPost = messagesAndJob?.jobPost;
 
+  // Fetch recruiter profile (company details)
+  const recruiterProfile = useQuery(
+    api.profiles.getRecruiterProfile,
+    jobPost?.recruiterId ? { userId: jobPost.recruiterId as Id<"users"> } : "skip"
+  );
+
+  const jobSeekerProfile = useQuery(
+    api.profiles.getJobSeekerProfile,
+    user ? { userId: user.userId as Id<"users"> } : "skip"
+  );
+
   // Fetch user's application
   const application = useQuery(api.applications.getApplicationForMatch, { 
     matchId,
@@ -176,6 +193,8 @@ export default function ChatPage() {
         job: jobPost,
         messages: messagesForApi,
         application,
+        recruiterProfile,
+        jobSeekerProfile,
         onNewMessage: (content) => {
           setStreamingContent(prev => prev + content);
         },
@@ -264,105 +283,72 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <div className="border-b bg-white dark:bg-gray-800 px-6 py-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {jobPost.title}
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {jobPost.company} • Chat with AI Assistant
-            </p>
-          </div>
-          <Button 
-            onClick={() => handleAskAi()} 
-            disabled={isAiLoading || isStreaming}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Bot className="h-4 w-4 mr-2" />
-            {isAiLoading ? "AI Thinking..." : "Ask AI"}
-          </Button>
+    <div className="flex flex-col h-screen max-h-screen">
+      {/* Header for Chat UI */}
+      <div className="sticky top-0 z-10 bg-background border-b p-4 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <Bot className="h-6 w-6 text-blue-600" />
+          <h2 className="text-xl font-semibold">
+            Chat with {jobPost?.title}
+          </h2>
         </div>
+        {application && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => router.push(`/dashboard/job-seeker/applications/${application._id}`)}
+          >
+            View Application
+          </Button>
+        )}
       </div>
 
-      {/* Messages Container */}
+      {/* Main chat area - scrollable */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {aiError && (
+          <div className="bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-3 rounded-md flex items-center gap-2 mb-4">
+            <AlertCircle className="h-5 w-5" />
+            <span>Error: {aiError}</span>
+          </div>
+        )}
         <MessageList 
-          messages={messages} 
-          currentUserId={user.userId as Id<"users">}
+          messages={messages || []}
+          currentUserId={user?.userId as Id<"users">}
           application={application}
         />
-        
-        {/* Streaming AI Response */}
         {isStreaming && streamingContent && (
-          <div className="flex items-start gap-3 animate-fade-in">
-            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-              <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
             </div>
-            <div className="flex-1 space-y-1">
-              <div className="font-semibold text-sm text-blue-600 dark:text-blue-400">
+            <div className="flex-1 max-w-2xl">
+              <div className="text-xs font-semibold mb-1 text-blue-600 dark:text-blue-400">
                 AI Assistant
               </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+              <div className="inline-block max-w-full rounded-lg px-4 py-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
                 <div 
-                  className="prose prose-sm max-w-none dark:prose-invert"
-                  dangerouslySetInnerHTML={{ 
-                    __html: streamingContent.replace(/\n/g, '<br>') 
-                  }} 
+                  className="text-sm leading-relaxed text-gray-900 dark:text-gray-100"
+                  dangerouslySetInnerHTML={{ __html: streamingContent }}
                 />
-                <div className="inline-block w-2 h-4 bg-blue-600 animate-pulse ml-1"></div>
               </div>
             </div>
           </div>
         )}
-
-        {/* AI Loading State */}
-        {isAiLoading && !isStreaming && (
-          <div className="flex items-center justify-center p-8">
-            <div className="flex items-center gap-3 text-blue-600 dark:text-blue-400">
-              <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
-              <span className="text-sm font-medium">AI is analyzing your conversation...</span>
-            </div>
-          </div>
-        )}
-
-        {/* AI Error State */}
-        {aiError && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 p-4 rounded-lg">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
-              <span className="font-medium">AI Error</span>
-            </div>
-            <p className="mt-1 text-sm">{aiError}</p>
-            <Button 
-              onClick={() => setAiError(null)} 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-            >
-              Dismiss
-            </Button>
-          </div>
-        )}
-
-        {/* Auto-scroll anchor */}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="border-t bg-white dark:bg-gray-800 p-4 shadow-lg">
-        {application !== undefined && (
-          <MessageInput
-            matchId={matchId}
-            user={user}
-            messages={messages}
-            jobPost={jobPost}
-            application={application}
-            onTriggerAi={handleAskAi}
-          />
-        )}
+      {/* Message Input fixed at bottom */}
+      <div className="sticky bottom-0 z-10 bg-background border-t p-4">
+        <MessageInput 
+          matchId={matchId}
+          user={user}
+          messages={messages || []}
+          jobPost={jobPost}
+          application={application || null}
+          onTriggerAi={handleAskAi}
+        />
       </div>
     </div>
   );

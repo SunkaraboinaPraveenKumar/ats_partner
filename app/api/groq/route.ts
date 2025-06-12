@@ -4,8 +4,8 @@ import { Groq } from "groq-sdk";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    // Expected body: { job: {...}, messages: [...], application?: {...} }
-    const { job, messages, application } = body;
+    const { job, messages, application, recruiterProfile, jobSeekerProfile } = body;
+
 
     if (!job || !messages) {
       return NextResponse.json({ error: "Missing required fields: job or messages" }, { status: 400 });
@@ -16,14 +16,33 @@ export async function POST(req: NextRequest) {
 
     const salary = job.salary || "Competitive salary";
     const location = job.location || "Not specified";
-    const recruiterName = job.recruiterName || "Not specified"; // Assuming recruiterName is passed from frontend
+
+    // Construct company details from recruiterProfile
+    const companyDetails = recruiterProfile ? `
+      Company Name: ${recruiterProfile.companyName || "Not specified"}
+      Company Size: ${recruiterProfile.companySize || "Not specified"}
+      Industry: ${recruiterProfile.industry || "Not specified"}
+      Company Description: ${recruiterProfile.companyDescription || "No detailed description provided"}
+    ` : `
+      Company: ${job.company || "Not specified"} (Limited details available)
+    `;
+
+    // Construct job seeker profile details
+    const profileDetails = jobSeekerProfile ? `
+      User Profile:
+        Title: ${jobSeekerProfile.title || "Not specified"}
+        Summary: ${jobSeekerProfile.summary || "No summary provided"}
+        Skills: ${jobSeekerProfile.extractedSkills?.join(", ") || "None listed"}
+        Attitude (Work Style): ${jobSeekerProfile.attitudeQuizResults?.workStyle || "Not specified"}
+        Attitude (Problem Solving): ${jobSeekerProfile.attitudeQuizResults?.problemSolving || "Not specified"}
+        Attitude (Team Dynamics): ${jobSeekerProfile.attitudeQuizResults?.teamDynamics || "Not specified"}
+        Attitude (Work Environment): ${jobSeekerProfile.attitudeQuizResults?.workEnvironment || "Not specified"}
+    ` : "";
 
     const jobDetails = `
       Job Title: ${job.title || "Not specified"}
-      Company: ${job.company || "Not specified"}
       Location: ${location}
       Salary: ${salary}
-      Recruiter: ${recruiterName}
       Description: ${job.description || "No detailed description provided"}
     `;
 
@@ -31,6 +50,11 @@ export async function POST(req: NextRequest) {
       // After application scenario
       systemPrompt = `
 You are a friendly and helpful AI assistant for a job portal.
+
+Here is information about the company:
+${companyDetails}
+
+${profileDetails}
 
 The user has already applied for the following job. Here are the job details and their application status:
 
@@ -41,18 +65,25 @@ Application Details:
   Status: ${application.status || 'Not available'}
   Application Date: ${application.createdAt ? new Date(application.createdAt).toLocaleDateString() : 'Not available'}
 
-Assist the user by providing information based on the job and their application details. You can discuss the job details, the significance of their match ratio, and explain their application status. If the user asks questions not covered by this information, politely state that you do not have that specific information.
+Assist the user by providing information based on the job, company, and their application details. You can discuss the job details, the significance of their match ratio, and explain their application status. You should be robust in answering questions about company values and growth opportunities based on the provided company description and job details. If the user asks questions not covered by this information, politely state that you do not have that specific information.
 `;
     } else {
       // Before application scenario
       systemPrompt = `
 You are a friendly and helpful AI assistant for a job portal.
 
+Here is information about the company:
+${companyDetails}
+
+${profileDetails}
+
 The user is asking questions about the following job posting:
 
 ${jobDetails}
 
-Assist the user by providing information based ONLY on the provided job details. You can answer questions about the role, company (based on provided details), location, salary, and description. If the user asks questions not covered by this information, politely state that you do not have that specific information.
+Assist the user by providing information based on the job and company details. You can answer questions about the role, company values (based on description), growth opportunities, location, salary, and job description. You should be robust in answering questions about company values and growth opportunities based on the provided company description and job details. If the user asks questions not covered by this information, politely state that you do not have that specific information.
+
+${job.matchRatio !== undefined ? `Based on your profile, you have a match of ${job.matchRatio}% for this job. You are encouraged to apply!` : ''}
 `;
     }
 
