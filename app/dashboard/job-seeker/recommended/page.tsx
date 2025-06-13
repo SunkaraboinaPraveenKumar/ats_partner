@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/store/authStore";
@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from 'next/navigation';
+import { BlurFade } from '@/components/magicui/blur-fade';
 
 // Import the same constants from job-seeker page
 const SALARY_RANGES = [
@@ -46,10 +47,17 @@ interface FilterState {
 
 export default function RecommendedJobsPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/login');
+    }
+  }, [isLoggedIn, router]);
+
   // Use the same filter state as job-seeker page
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -67,24 +75,24 @@ export default function RecommendedJobsPage() {
   );
 
   // Fetch applications for filtering
-  const applications = useQuery(api.applications.getApplicationsByUser, 
+  const applications = useQuery(api.applications.getApplicationsByUser,
     user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
   );
 
   // Extract unique values for filter options (same as job-seeker page)
   const { uniqueSkills, uniqueLocations, uniqueCompanies } = useMemo(() => {
     if (!recommendedJobs) return { uniqueSkills: [], uniqueLocations: [], uniqueCompanies: [] };
-    
+
     const skills = new Set<string>();
     const locations = new Set<string>();
     const companies = new Set<string>();
-    
+
     recommendedJobs.forEach(job => {
       job.requiredSkills?.forEach((skill: string) => skills.add(skill));
       if (job.location) locations.add(job.location);
       if (job.company) companies.add(job.company);
     });
-    
+
     return {
       uniqueSkills: Array.from(skills).sort(),
       uniqueLocations: Array.from(locations).sort(),
@@ -95,9 +103,9 @@ export default function RecommendedJobsPage() {
   // Filter jobs (same logic as job-seeker page)
   const filteredJobs = useMemo(() => {
     if (!recommendedJobs) return [];
-    
+
     const appliedJobIds = new Set(applications?.map(app => app.jobPostId) || []);
-    
+
     return recommendedJobs.filter(job => {
       // Search filter (job title or company)
       if (filters.search && filters.search.trim()) {
@@ -128,8 +136,8 @@ export default function RecommendedJobsPage() {
       // Skills filter
       if (filters.selectedSkills && filters.selectedSkills.length > 0) {
         const jobSkills = job.requiredSkills || [];
-        const hasMatchingSkill = filters.selectedSkills.some(skill => 
-          jobSkills.some(jobSkill => 
+        const hasMatchingSkill = filters.selectedSkills.some(skill =>
+          jobSkills.some(jobSkill =>
             jobSkill.toLowerCase().trim() === skill.toLowerCase().trim()
           )
         );
@@ -215,7 +223,7 @@ export default function RecommendedJobsPage() {
               Jobs matching your profile and preferences
             </p>
           </div>
-          <Button 
+          <Button
             onClick={() => router.push('/dashboard/job-seeker')}
             variant="outline"
             className="flex items-center gap-2"
@@ -285,9 +293,9 @@ export default function RecommendedJobsPage() {
                     <SheetHeader>
                       <SheetTitle className="flex items-center justify-between">
                         Advanced Filters
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={clearFilters}
                           className="text-slate-500 hover:text-slate-700"
                         >
@@ -353,14 +361,14 @@ export default function RecommendedJobsPage() {
                           <Briefcase className="h-4 w-4 inline mr-2" />
                           Required Skills
                         </Label>
-                        
+
                         {/* Selected Skills */}
                         {filters.selectedSkills.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-3">
                             {filters.selectedSkills.map(skill => (
-                              <Badge 
-                                key={skill} 
-                                variant="secondary" 
+                              <Badge
+                                key={skill}
+                                variant="secondary"
                                 className="cursor-pointer hover:bg-red-100 hover:text-red-700 transition-colors"
                                 onClick={() => removeSkill(skill)}
                               >
@@ -458,15 +466,17 @@ export default function RecommendedJobsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJobs.map((job) => (
               <div key={job._id}>
-                <SwipeCard
-                  type="job"
-                  data={{
-                    ...job,
-                    skills: job.requiredSkills,
-                    matchPercentage: Math.round(job.matchScore * 100),
-                  }}
-                  onSwipe={() => {}} // No swipe needed, can be a no-op
-                />
+                <BlurFade key={job._id} delay={0.1} duration={0.8} inView={true}>
+                  <SwipeCard
+                    type="job"
+                    data={{
+                      ...job,
+                      skills: job.requiredSkills,
+                      matchPercentage: Math.round(job.matchScore * 100),
+                    }}
+                    onSwipe={() => { }} // No swipe needed, can be a no-op
+                  />
+                </BlurFade>
               </div>
             ))}
           </div>

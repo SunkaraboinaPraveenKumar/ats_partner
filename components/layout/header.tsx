@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserCircle, BriefcaseBusiness, LogIn, Menu, X, LayoutDashboard, Sparkles } from "lucide-react";
+import { UserCircle, BriefcaseBusiness, LogIn, Sparkles, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -13,15 +13,15 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLab
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
+import { ScrollProgress } from "../magicui/scroll-progress";
 
 interface NavItemsProps {
   isLoggedIn: boolean;
   user: any;
   recruiterProfile: any;
-  setIsMobileMenuOpen: (isOpen: boolean) => void;
 }
 
-const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile, setIsMobileMenuOpen }) => (
+const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile }) => (
   <>
     {isLoggedIn ? (
       <DropdownMenu>
@@ -45,14 +45,14 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile,
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
-            <Link href={user?.role === 'recruiter' ? "/dashboard/recruiter" : "/dashboard/job-seeker"} onClick={() => setIsMobileMenuOpen(false)}>
+            <Link href={user?.role === 'recruiter' ? "/dashboard/recruiter" : "/dashboard/job-seeker"}>
               <LayoutDashboard className="mr-2 h-4 w-4" />
               <span>My Dashboard</span>
             </Link>
           </DropdownMenuItem>
           {user?.role === 'recruiter' && (
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/recruiter/profile" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link href="/dashboard/recruiter/profile">
                 <UserCircle className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </Link>
@@ -60,19 +60,19 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile,
           )}
           {user?.role === 'job-seeker' && (
             <DropdownMenuItem asChild>
-              <Link href="/dashboard/job-seeker/profile" onClick={() => setIsMobileMenuOpen(false)}>
+              <Link href="/dashboard/job-seeker/profile">
                 <UserCircle className="mr-2 h-4 w-4" />
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => { useAuthStore.getState().logout(); setIsMobileMenuOpen(false); }}>
+          <DropdownMenuItem onClick={() => { useAuthStore.getState().logout(); }}>
             <LogIn className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="https://ai-career-coach-agent-livid.vercel.app/" target="_blank" rel="noopener noreferrer" onClick={() => setIsMobileMenuOpen(false)}>
+            <Link href="https://ai-career-coach-agent-livid.vercel.app/" target="_blank" rel="noopener noreferrer">
               <Button size={"sm"} className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 AI Career Coach
@@ -83,19 +83,19 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile,
       </DropdownMenu>
     ) : (
       <>
-        <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+        <Link href="/login">
           <Button variant="ghost" size="sm" className="gap-1">
             <LogIn className="h-4 w-4" />
             <span className="hidden sm:inline">Login</span>
           </Button>
         </Link>
-        <Link href="/signup/recruiter" onClick={() => setIsMobileMenuOpen(false)}>
+        <Link href="/signup/recruiter" className="hidden sm:inline-block">
           <Button variant="outline" size="sm" className="gap-1">
             <BriefcaseBusiness className="h-4 w-4" />
-            <span className="hidden sm:inline">For Recruiters</span>
+            <span>For Recruiters</span>
           </Button>
         </Link>
-        <Link href="/signup/job-seeker" onClick={() => setIsMobileMenuOpen(false)}>
+        <Link href="/signup/job-seeker" className="hidden sm:inline-block">
           <Button variant="default" size="sm" className="gap-1">
             <UserCircle className="h-4 w-4" />
             <span>For Job Seekers</span>
@@ -108,28 +108,8 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile,
 
 const Header = () => {
   const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { isLoggedIn, user } = useAuthStore();
   const router = useRouter();
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-
-    if (isMobileMenuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isMobileMenuOpen]);
 
   const recruiterProfile = useQuery(
     api.profiles.getRecruiterProfile,
@@ -148,48 +128,66 @@ const Header = () => {
         </Link>
         
         {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-4">
+        <nav className="hidden md:flex items-center gap-8">
+          <Link 
+            href="/about" 
+            className={cn(
+              "text-sm font-medium hover:text-primary",
+              pathname === "/about" && "text-primary"
+            )}
+            passHref
+          >
+            About
+          </Link>
+          <Link 
+            href="/contact" 
+            className={cn(
+              "text-sm font-medium hover:text-primary",
+              pathname === "/contact" && "text-primary"
+            )}
+            passHref
+          >
+            Contact
+          </Link>
+          <Link 
+            href="/privacy" 
+            className={cn(
+              "text-sm font-medium hover:text-primary",
+              pathname === "/privacy" && "text-primary"
+            )}
+            passHref
+          >
+            Privacy
+          </Link>
+          <Link 
+            href="/terms" 
+            className={cn(
+              "text-sm font-medium hover:text-primary",
+              pathname === "/terms" && "text-primary"
+            )}
+            passHref
+          >
+            Terms
+          </Link>
           <NavItems 
             isLoggedIn={isLoggedIn} 
             user={user} 
             recruiterProfile={recruiterProfile} 
-            setIsMobileMenuOpen={setIsMobileMenuOpen} 
           />
           <ModeToggle />
         </nav>
 
-        {/* Mobile Menu Button */}
-        <div className="md:hidden flex items-center">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="focus:outline-none"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </Button>
+        {/* Mobile Navigation - directly show avatar/buttons */}
+        <div className="md:hidden flex items-center gap-2">
+          <NavItems 
+            isLoggedIn={isLoggedIn} 
+            user={user} 
+            recruiterProfile={recruiterProfile} 
+          />
           <ModeToggle />
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      <div ref={menuRef} className={cn(
-        "md:hidden absolute top-16 left-0 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b",
-        isMobileMenuOpen ? "block" : "hidden"
-      )}>
-        <nav className="flex flex-col items-start gap-4 p-4">
-          <NavItems 
-            isLoggedIn={isLoggedIn} 
-            user={user} 
-            recruiterProfile={recruiterProfile} 
-            setIsMobileMenuOpen={setIsMobileMenuOpen} 
-          />
-        </nav>
-      </div>
+      <ScrollProgress className="h-0.5 bg-blue-600 dark:bg-blue-400" />
     </header>
   );
 };

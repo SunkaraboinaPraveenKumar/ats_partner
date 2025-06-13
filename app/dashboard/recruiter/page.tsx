@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -13,11 +13,22 @@ import CreateJobPostModal from "@/components/dashboard/create-job-post-modal";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import { Id } from "@/convex/_generated/dataModel";
+import { BlurFade } from "@/components/magicui/blur-fade";
+import { useRouter } from 'next/navigation';
 
 export default function RecruiterDashboard() {
   const [isLoading, setIsLoading] = useState(false); // Example loading state for actions
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user } = useAuthStore();
+  const { user, isLoggedIn } = useAuthStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/login');
+    } else if (user === null) {
+      router.push('/login');
+    }
+  }, [isLoggedIn, user, router]);
 
   const jobPostings = useQuery(
     api.jobs.getRecruiterJobs,
@@ -68,7 +79,9 @@ export default function RecruiterDashboard() {
           // Display job postings
           <div className="grid gap-4">
             {jobPostings.map((job) => (
-              <JobPostingCard key={job._id} job={job} />
+              <BlurFade key={job._id} delay={0.1} duration={0.8} inView={true}>
+                <JobPostingCard  job={job} />
+              </BlurFade>
             ))}
           </div>
         )}

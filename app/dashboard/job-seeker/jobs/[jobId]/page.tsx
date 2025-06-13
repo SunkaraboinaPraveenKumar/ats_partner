@@ -12,13 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
+import { BlurFade } from "@/components/magicui/blur-fade";
+import React, { useEffect } from 'react';
 
 export default function JobDetailPage() {
     const params = useParams();
     const jobId = params.jobId as Id<"jobPosts">;
 
     const jobPost = useQuery(api.jobs.getJobPostById, { jobId });
-    const { user } = useAuthStore();
+    const { user, isLoggedIn } = useAuthStore();
     const createApplication = useMutation(api.applications.createApplication);
     const application = useQuery(api.applications.getApplicationByUserAndJob, {
         userId: user?.userId as Id<"users">,
@@ -27,6 +29,12 @@ export default function JobDetailPage() {
 
     const router = useRouter();
     const getOrCreateMatch = useMutation(api.matching.getOrCreateMatch);
+
+    useEffect(() => {
+      if (!isLoggedIn) {
+        router.push('/login');
+      }
+    }, [isLoggedIn, router]);
 
     const handleApply = async () => {
         if (!user?.userId) {
@@ -95,6 +103,7 @@ export default function JobDetailPage() {
 
     return (
         <div className="container mx-auto py-8">
+          <BlurFade delay={0.1} duration={0.5} inView={true}>
             <Card className="p-6 shadow-lg rounded-lg">
                 <CardHeader className="relative">
                     <CardTitle className="flex items-center gap-2 text-2xl font-bold mb-2">
@@ -143,50 +152,57 @@ export default function JobDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                     <Separator />
-                    <div>
-                        <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                            <Lightbulb className="h-5 w-5 text-primary" /> Job Description
-                        </h3>
-                        <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{description}</p>
-                    </div>
+                    <BlurFade delay={0.2} duration={0.5} inView={true}>
+                      <div>
+                          <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                              <Lightbulb className="h-5 w-5 text-primary" /> Job Description
+                          </h3>
+                          <p className="text-gray-800 dark:text-gray-200 leading-relaxed">{description}</p>
+                      </div>
+                    </BlurFade>
 
                     {requiredSkills && requiredSkills.length > 0 && (
-                        <>
-                            <Separator />
-                            <div className="flex flex-col items-start">
-                                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                                    <Lightbulb className="h-5 w-5 text-primary" /> Required Skills
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {requiredSkills.map((skill: string, index: number) => (
-                                        <Badge key={index} variant="secondary">
-                                            {skill}
-                                        </Badge>
-                                    ))}
+                        <BlurFade delay={0.3} duration={0.5} inView={true}>
+                            <>
+                                <Separator className="mb-3"/>
+                                <div className="flex flex-col items-start">
+                                    <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                                        <Lightbulb className="h-5 w-5 text-primary" /> Required Skills
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {requiredSkills.map((skill: string, index: number) => (
+                                            <Badge key={index} variant="secondary">
+                                                {skill}
+                                            </Badge>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </>
+                            </>
+                        </BlurFade>
                     )}
 
                     {attitudePreferences && attitudePreferences.length > 0 && (
-                        <>
-                            <Separator />
-                            <div className="flex flex-col items-start">
-                                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                                    <User className="h-5 w-5 text-primary" /> Attitude Preferences
-                                </h3>
-                                <div className="flex flex-wrap gap-2">
-                                    {attitudePreferences.map((pref: string, index: number) => (
-                                        <Badge key={index} variant="outline">
-                                            {pref}
-                                        </Badge>
-                                    ))}
+                        <BlurFade delay={0.4} duration={0.5} inView={true}>
+                            <>
+                                <Separator className="mb-3"/>
+                                <div className="flex flex-col items-start">
+                                    <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
+                                        <User className="h-5 w-5 text-primary" /> Attitude Preferences
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {attitudePreferences.map((pref: string, index: number) => (
+                                            <Badge key={index} variant="outline">
+                                                {pref}
+                                            </Badge>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        </>
+                            </>
+                        </BlurFade>
                     )}
                 </CardContent>
             </Card>
+          </BlurFade>
         </div>
     );
 } 
