@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { useAuthStore } from '@/store/authStore';
@@ -18,18 +18,28 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { ExternalLink, EyeIcon, Loader2, Upload } from 'lucide-react';
+import { ExternalLink, EyeIcon, Loader2, Upload, Calendar, User, Mail, Phone, MapPin, Briefcase, DollarSign, ListChecks, GraduationCap } from 'lucide-react';
 import { useMutation } from "convex/react";
 import { useAction } from "convex/react";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { toast } from "sonner";
 import { generateUploadUrl } from '@/convex/files';
 import Link from 'next/link';
+import { BlurFade } from '@/components/magicui/blur-fade';
+import { useRouter } from 'next/navigation';
 
 function JobSeekerProfilePage() {
   const { user, isLoggedIn } = useAuthStore();
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const router = useRouter();
+
+  // Redirect if not logged in
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/login');
+    }
+  }, [isLoggedIn, router]);
 
   // Fetch job seeker profile
   const jobSeekerProfile = useQuery(
@@ -244,38 +254,41 @@ function JobSeekerProfilePage() {
             <p className="text-center text-muted-foreground">No applications yet</p>
           ) : (
             applications?.map((app) => (
-              <Card key={app._id} className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-medium flex gap-2 items-center justify-start">
-                      {app.jobPost?.title}
-                      <Link href={`/dashboard/job-seeker/applications/${app._id}`}>
-                        <ExternalLink className='h-4 w-4 text-primary' />
-                      </Link>
-                    </h4>
-                    <p className="text-sm text-muted-foreground">
-                      {app.jobPost?.company} - {app.jobPost?.location}
+              <BlurFade key={app._id} delay={0.1} duration={0.5} inView>
+                <Card className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium flex gap-2 items-center justify-start">
+                        {app.jobPost?.title}
+                        <Link href={`/dashboard/job-seeker/applications/${app._id}`}>
+                          <ExternalLink className='h-4 w-4 text-primary' />
+                        </Link>
+                      </h4>
+                      <p className="text-sm text-muted-foreground">
+                        {app.jobPost?.company} - {app.jobPost?.location}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        app.status === "accepted" ? "default" :
+                          app.status === "rejected" ? "destructive" :
+                            "outline"
+                      }>
+                        {app.status}
+                      </Badge>
+                      <Badge variant="secondary">
+                        Match: {Math.round(app.matchRatio * 100)}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Applied on {new Date(app.createdAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={
-                      app.status === "accepted" ? "default" :
-                        app.status === "rejected" ? "destructive" :
-                          "outline"
-                    }>
-                      {app.status}
-                    </Badge>
-                    <Badge variant="secondary">
-                      Match: {Math.round(app.matchRatio * 100)}%
-                    </Badge>
-                  </div>
-                </div>
-                <div className="mt-2">
-                  <p className="text-sm text-muted-foreground">
-                    Applied on {new Date(app.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </Card>
+                </Card>
+              </BlurFade>
             ))
           )}
         </CardContent>

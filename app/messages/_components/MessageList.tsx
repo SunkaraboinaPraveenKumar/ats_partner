@@ -2,6 +2,14 @@ import React from "react";
 import { Doc, Id } from "@/convex/_generated/dataModel";
 import { Bot, User, Briefcase } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { ScriptCopyBtn } from "@/components/magicui/script-copy-btn";
 
 interface MessageListProps {
   messages: Doc<"messages">[];
@@ -28,6 +36,17 @@ const MessageList: React.FC<MessageListProps> = ({
 
   const isAiMessage = (message: Doc<"messages">) => {
     return message.isAiResponse === true;
+  };
+
+  const handleCopy = (content: string) => {
+    navigator.clipboard.writeText(content)
+      .then(() => {
+        toast.success("Message copied to clipboard!");
+      })
+      .catch((err) => {
+        console.error("Failed to copy message:", err);
+        toast.error("Failed to copy message.");
+      });
   };
 
   const formatMessageContent = (content: string) => {
@@ -67,6 +86,7 @@ const MessageList: React.FC<MessageListProps> = ({
 
   return (
     <div className="space-y-6">
+      <TooltipProvider>
       {messages.map((message, index) => {
         const isUser = isCurrentUser(message.senderId);
         const isAi = isAiMessage(message);
@@ -122,7 +142,7 @@ const MessageList: React.FC<MessageListProps> = ({
                 </div>
 
                 {/* Message bubble */}
-                <div className={`inline-block max-w-full rounded-lg px-4 py-3 ${
+                <div className={`relative inline-block max-w-full rounded-lg px-4 py-3 ${
                   isAi
                     ? 'bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800'
                     : isUser
@@ -141,6 +161,14 @@ const MessageList: React.FC<MessageListProps> = ({
                       __html: formatMessageContent(message.content) 
                     }} 
                   />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <ScriptCopyBtn
+                        value={message.content}
+                        className={`absolute right-2 -bottom-2 p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
+                      />
+                    </TooltipTrigger>
+                  </Tooltip>
                 </div>
 
                 {/* Message time (shown on hover) */}
@@ -154,6 +182,7 @@ const MessageList: React.FC<MessageListProps> = ({
           </div>
         );
       })}
+      </TooltipProvider>
     </div>
   );
 };

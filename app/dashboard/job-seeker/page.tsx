@@ -12,24 +12,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetDescription, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
 } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { BlurFade } from '@/components/magicui/blur-fade';
 import {
   Search,
   Filter,
@@ -76,7 +77,16 @@ interface FilterState {
 function JobSeekerDashboardPage() {
   const { user, isLoggedIn } = useAuthStore();
   const router = useRouter();
-  
+
+  // Redirect if not logged in or user data is missing
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/login');
+    } else if (user === null) { // If logged in but user object is null
+      router.push('/login');
+    }
+  }, [isLoggedIn, user, router]);
+
   // State for filters
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -86,15 +96,15 @@ function JobSeekerDashboardPage() {
     applicationStatus: 'all',
     company: ''
   });
-  
+
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Fetch data
   const jobPosts = useQuery(api.jobs.getJobPosts, { status: "active" });
-  const jobSeekerProfile = useQuery(api.profiles.getJobSeekerProfile, 
+  const jobSeekerProfile = useQuery(api.profiles.getJobSeekerProfile,
     user ? { userId: user.userId as Id<"users"> } : "skip"
   );
-  const applications = useQuery(api.applications.getApplicationsByUser, 
+  const applications = useQuery(api.applications.getApplicationsByUser,
     user ? { userId: user.userId as Id<"users"> } : "skip"
   );
 
@@ -105,17 +115,17 @@ function JobSeekerDashboardPage() {
   // Extract unique values for filter options
   const { uniqueSkills, uniqueLocations, uniqueCompanies } = useMemo(() => {
     if (!jobPosts) return { uniqueSkills: [], uniqueLocations: [], uniqueCompanies: [] };
-    
+
     const skills = new Set<string>();
     const locations = new Set<string>();
     const companies = new Set<string>();
-    
+
     jobPosts.forEach(job => {
       job.requiredSkills?.forEach((skill: string) => skills.add(skill));
       if (job.location) locations.add(job.location);
       if (job.company) companies.add(job.company);
     });
-    
+
     return {
       uniqueSkills: Array.from(skills).sort(),
       uniqueLocations: Array.from(locations).sort(),
@@ -126,9 +136,9 @@ function JobSeekerDashboardPage() {
   // Filter jobs based on current filters
   const filteredJobs = useMemo(() => {
     if (!jobPosts) return [];
-    
+
     const appliedJobIds = new Set(applications?.map(app => app.jobPostId) || []);
-    
+
     return jobPosts.filter(job => {
       // Search filter (job title or company)
       if (filters.search && filters.search.trim()) {
@@ -137,22 +147,22 @@ function JobSeekerDashboardPage() {
         const companyMatch = job.company?.toLowerCase().includes(searchLower);
         if (!titleMatch && !companyMatch) return false;
       }
-      
+
       // Company filter
       if (filters.company && filters.company.trim() && job.company !== filters.company) {
         return false;
       }
-      
+
       // Location filter
       if (filters.location && filters.location.trim() && job.location !== filters.location) {
         return false;
       }
-      
+
       // Salary range filter
       if (filters.salaryRange !== 'any') {
         const [min, max] = filters.salaryRange.split('-').map(Number);
         const jobSalary = Number(job?.salary);
-        
+
         // Handle "25+ LPA" case
         if (filters.salaryRange === '2500000-999999999') {
           if (jobSalary < 2500000) return false;
@@ -160,18 +170,18 @@ function JobSeekerDashboardPage() {
           if (jobSalary < min || jobSalary > max) return false;
         }
       }
-      
+
       // Skills filter
       if (filters.selectedSkills && filters.selectedSkills.length > 0) {
         const jobSkills = job.requiredSkills || [];
-        const hasMatchingSkill = filters.selectedSkills.some(skill => 
-          jobSkills.some(jobSkill => 
+        const hasMatchingSkill = filters.selectedSkills.some(skill =>
+          jobSkills.some(jobSkill =>
             jobSkill.toLowerCase().trim() === skill.toLowerCase().trim()
           )
         );
         if (!hasMatchingSkill) return false;
       }
-      
+
       // Application status filter
       if (filters.applicationStatus === 'applied' && !appliedJobIds.has(job._id)) {
         return false;
@@ -179,7 +189,7 @@ function JobSeekerDashboardPage() {
       if (filters.applicationStatus === 'not-applied' && appliedJobIds.has(job._id)) {
         return false;
       }
-      
+
       return true;
     });
   }, [jobPosts, applications, filters]);
@@ -188,7 +198,7 @@ function JobSeekerDashboardPage() {
   useEffect(() => {
     if (jobSeekerProfile && jobSeekerProfile.resumeText && !jobSeekerProfile.resumeIngested) {
       console.log("Attempting to ingest resume embeddings...");
-      
+
       const splitter = new RecursiveCharacterTextSplitter({
         chunkSize: 1000,
         chunkOverlap: 200,
@@ -202,19 +212,19 @@ function JobSeekerDashboardPage() {
               splitText: splitText,
               userId: user.userId as Id<"users">,
             })
-            .then(() => {
-              console.log("Resume ingestion action triggered successfully.");
-              updateJobSeekerProfile({
-                userId: user.userId as Id<"users">,
-                resumeIngested: true,
-              }).catch(error => {
-                console.error("Failed to update resumeIngested flag:", error);
+              .then(() => {
+                console.log("Resume ingestion action triggered successfully.");
+                updateJobSeekerProfile({
+                  userId: user.userId as Id<"users">,
+                  resumeIngested: true,
+                }).catch(error => {
+                  console.error("Failed to update resumeIngested flag:", error);
+                });
+              })
+              .catch(error => {
+                console.error("Failed to trigger resume ingestion action:", error);
+                toast.error("Failed to process resume embeddings.");
               });
-            })
-            .catch(error => {
-              console.error("Failed to trigger resume ingestion action:", error);
-              toast.error("Failed to process resume embeddings.");
-            });
           }
         })
         .catch(error => {
@@ -256,6 +266,18 @@ function JobSeekerDashboardPage() {
     }));
   };
 
+  // Helper to count active filters for Badge
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.search) count++;
+    if (filters.salaryRange !== 'any') count++;
+    if (filters.location) count++;
+    if (filters.applicationStatus !== 'all') count++;
+    if (filters.company) count++;
+    count += filters.selectedSkills.length;
+    return count;
+  }, [filters]);
+
   // Loading and access control
   if (jobPosts === undefined) {
     return (
@@ -275,15 +297,6 @@ function JobSeekerDashboardPage() {
     );
   }
 
-  const activeFiltersCount = [
-    filters.search,
-    filters.company,
-    filters.location,
-    filters.salaryRange !== 'any' ? filters.salaryRange : '',
-    filters.applicationStatus !== 'all' ? filters.applicationStatus : '',
-    ...filters.selectedSkills
-  ].filter(Boolean).length;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className=" mx-auto px-4 py-6 max-w-7xl">
@@ -297,7 +310,7 @@ function JobSeekerDashboardPage() {
               Discover your next career opportunity with {filteredJobs.length} matching positions
             </p>
           </div>
-          <Button 
+          <Button
             onClick={() => router.push('/dashboard/job-seeker/recommended')}
             className="flex items-center gap-2"
           >
@@ -366,9 +379,9 @@ function JobSeekerDashboardPage() {
                     <SheetHeader>
                       <SheetTitle className="flex items-center justify-between">
                         Advanced Filters
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={clearFilters}
                           className="text-slate-500 hover:text-slate-700"
                         >
@@ -434,14 +447,14 @@ function JobSeekerDashboardPage() {
                           <Briefcase className="h-4 w-4 inline mr-2" />
                           Required Skills
                         </Label>
-                        
+
                         {/* Selected Skills */}
                         {filters.selectedSkills.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-3">
                             {filters.selectedSkills.map(skill => (
-                              <Badge 
-                                key={skill} 
-                                variant="secondary" 
+                              <Badge
+                                key={skill}
+                                variant="secondary"
                                 className="cursor-pointer hover:bg-red-100 hover:text-red-700 transition-colors"
                                 onClick={() => removeSkill(skill)}
                               >
@@ -539,14 +552,16 @@ function JobSeekerDashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredJobs.map((job) => (
               <div key={job._id}>
-                <SwipeCard
-                  type="job"
-                  data={{
-                    ...job,
-                    skills: job.requiredSkills,
-                  }}
-                  onSwipe={() => {}} // No swipe needed, can be a no-op
-                />
+                <BlurFade key={job._id} delay={0.1} duration={0.8} inView={true}>
+                  <SwipeCard
+                    type="job"
+                    data={{
+                      ...job,
+                      skills: job.requiredSkills,
+                    }}
+                    onSwipe={() => { }} // No swipe needed, can be a no-op
+                  />
+                </BlurFade>
               </div>
             ))}
           </div>
