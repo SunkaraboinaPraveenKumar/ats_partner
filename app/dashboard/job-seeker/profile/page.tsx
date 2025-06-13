@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useAuthStore } from '@/store/authStore';
 import { Id } from '@/convex/_generated/dataModel';
 // Import UI components for displaying profile and modal
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,36 +26,38 @@ import { generateUploadUrl } from '@/convex/files';
 import Link from 'next/link';
 import { BlurFade } from '@/components/magicui/blur-fade';
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
+import { Separator } from "@/components/ui/separator";
 
 function JobSeekerProfilePage() {
-  const { user, isLoggedIn } = useAuthStore();
+  const { data: session, status } = useSession();
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const router = useRouter();
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [isLoggedIn, router]);
+  }, [status, router]);
 
   // Fetch job seeker profile
   const jobSeekerProfile = useQuery(
     api.profiles.getJobSeekerProfile,
-    user?.role === 'job-seeker' && user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.role === 'job-seeker' && session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Add this query
   const applications = useQuery(
     api.applications.getApplicationsByUser,
-    user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Add these mutations and actions
   const updateJobSeekerProfile = useMutation(api.profiles.updateJobSeekerProfile);
   const ingestResume = useAction(api.action.ingest);
-  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const generateUploadUrlMutation = useMutation(api.files.generateUploadUrl);
 
   // Add this function to handle resume upload
   const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,7 +67,7 @@ function JobSeekerProfilePage() {
     setIsUploading(true);
     try {
       // 1. Get upload URL and upload file
-      const postUrl = await generateUploadUrl();
+      const postUrl = await generateUploadUrlMutation();
       const uploadResult = await fetch(postUrl, { method: "POST", body: file });
       const jsonResult = await uploadResult.json();
       const storageId = jsonResult.storageId as Id<"_storage">;
@@ -86,7 +87,7 @@ function JobSeekerProfilePage() {
 
       // 3. Update profile with new resume data
       await updateJobSeekerProfile({
-        userId: user?.userId as Id<"users">,
+        userId: session?.user?.id as Id<"users">,
         fileUrl,
         resumeText,
         extractedSkills,
@@ -105,7 +106,7 @@ function JobSeekerProfilePage() {
       // 5. Generate and store embeddings
       await ingestResume({
         splitText,
-        userId: user?.userId as Id<"users">,
+        userId: session?.user?.id as Id<"users">,
       });
 
       toast.success("Resume updated successfully!");
@@ -123,7 +124,7 @@ function JobSeekerProfilePage() {
   }
 
   // Show message if user is not logged in or not a job seeker
-  if (!isLoggedIn || user?.role !== 'job-seeker') {
+  if (status === 'unauthenticated' || session?.user?.role !== 'job-seeker') {
     return <div className=" py-8 text-center">Access Denied: Only job seekers can view this page.</div>;
   }
 
@@ -208,89 +209,96 @@ function JobSeekerProfilePage() {
               </div>
             </div>
           </div>
+
+          <Separator />
+
+          <BlurFade delay={0.1} duration={0.5} inView={true}>
+            <div className="grid gap-4">
+              <Label>Name</Label>
+              <div className="flex items-center gap-2 text-md font-medium"><User className="h-5 w-5 text-primary" /> {session?.user?.name || ''}</div>
+            </div>
+          </BlurFade>
+
+          <BlurFade delay={0.2} duration={0.5} inView={true}>
+            <div className="grid gap-4">
+              <Label>Email</Label>
+              <div className="flex items-center gap-2 text-md font-medium"><Mail className="h-5 w-5 text-primary" /> {session?.user?.email || ''}</div>
+            </div>
+          </BlurFade>
+
           <div>
             <Label htmlFor="profileTitle">Title</Label>
-            <div id="profileTitle" className="mt-1 p-2 border rounded-md bg-muted/40 text-sm break-words">{jobSeekerProfile.title}</div>
+            <div id="profileTitle" className="mt-1 p-2 border rounded-md bg-muted/40 text-sm break-words">{jobSeekerProfile?.title || 'N/A'}</div>
           </div>
           <div>
             <Label htmlFor="profileSummary">Summary</Label>
-            <div id="profileSummary" className="mt-1 p-2 border rounded-md bg-muted/40 text-sm break-words whitespace-pre-wrap">{jobSeekerProfile.summary}</div>
+            <div id="profileSummary" className="mt-1 p-2 border rounded-md bg-muted/40 text-sm break-words whitespace-pre-wrap">{jobSeekerProfile?.summary || 'N/A'}</div>
           </div>
           <div>
             <Label>Skills</Label>
             <div className="mt-1 flex flex-wrap gap-2">
-              {jobSeekerProfile.extractedSkills && jobSeekerProfile.extractedSkills.length > 0 ? (
+              {jobSeekerProfile?.extractedSkills && jobSeekerProfile.extractedSkills.length > 0 ? (
                 jobSeekerProfile.extractedSkills.map((skill, index) => (
-                  <Badge key={index} variant="secondary">{skill}</Badge>
+                  <Badge key={index} variant="secondary"><ListChecks className="h-4 w-4 mr-1" />{skill}</Badge>
                 ))
               ) : (
                 <span className="text-muted-foreground text-sm">No skills extracted yet.</span>
               )}
             </div>
           </div>
-          {/* Display Attitude Quiz Results */}
-          {jobSeekerProfile.attitudeQuizResults && (
+          {jobSeekerProfile?.attitudeQuizResults && (
             <div>
               <Label>Attitude Assessment Results</Label>
               <div className="mt-1 p-2 border rounded-md bg-muted/40 text-sm space-y-2">
                 <p><strong>Work Style:</strong> {jobSeekerProfile.attitudeQuizResults.workStyle}</p>
                 <p><strong>Problem Solving:</strong> {jobSeekerProfile.attitudeQuizResults.problemSolving}</p>
                 <p><strong>Team Dynamics:</strong> {jobSeekerProfile.attitudeQuizResults.teamDynamics}</p>
-                {/* Ensure workEnvironment is displayed if it exists */}
                 {jobSeekerProfile.attitudeQuizResults.workEnvironment && (
                   <p><strong>Work Environment:</strong> {jobSeekerProfile.attitudeQuizResults.workEnvironment}</p>
                 )}
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-      <Card className="max-w-3xl mx-auto mt-6">
-        <CardHeader>
-          <CardTitle>Your Applications</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {applications?.length === 0 ? (
-            <p className="text-center text-muted-foreground">No applications yet</p>
-          ) : (
-            applications?.map((app) => (
-              <BlurFade key={app._id} delay={0.1} duration={0.5} inView>
-                <Card className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-medium flex gap-2 items-center justify-start">
-                        {app.jobPost?.title}
-                        <Link href={`/dashboard/job-seeker/applications/${app._id}`}>
-                          <ExternalLink className='h-4 w-4 text-primary' />
-                        </Link>
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {app.jobPost?.company} - {app.jobPost?.location}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={
-                        app.status === "accepted" ? "default" :
-                          app.status === "rejected" ? "destructive" :
-                            "outline"
-                      }>
-                        {app.status}
-                      </Badge>
-                      <Badge variant="secondary">
-                        Match: {Math.round(app.matchRatio * 100)}%
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="mt-2">
-                    <p className="text-sm text-muted-foreground flex items-center gap-1">
-                      <Calendar className="h-4 w-4" />
-                      Applied on {new Date(app.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </Card>
-              </BlurFade>
-            ))
+
+          {jobSeekerProfile.resumeIngested && (
+            <BlurFade delay={0.3} duration={0.3} inView={true}>
+              <div className="grid gap-4">
+                <Label>Resume Status</Label>
+                <div className="flex items-center gap-2 text-md font-medium">
+                  <Badge variant="default">
+                    Resume Ingested
+                  </Badge>
+                  <span className="text-sm text-muted-foreground">Your resume has been successfully processed for AI matching.</span>
+                </div>
+              </div>
+            </BlurFade>
           )}
+
+          {applications && applications.length > 0 && (
+            <BlurFade delay={0.4} duration={0.3} inView={true}>
+              <div>
+                <h3 className="text-xl font-semibold mb-3">Your Applications</h3>
+                <div className="space-y-4">
+                  {applications.map((app) => (
+                    <Card key={app._id} className="p-4 flex justify-between items-start">
+                      <div>
+                        <p className="font-semibold">{app.jobPost?.title} at {app.jobPost?.company}</p>
+                        <p className="text-sm text-muted-foreground">Status: {app.status}</p>
+                        <div className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-4 w-4" /> Applied on: {new Date(app._creationTime).toLocaleDateString()}</div>
+                      </div>
+                      <Link href={`/dashboard/job-seeker/applications/${app._id}`} passHref>
+                        <Button variant="outline">
+                          View Application
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                        </Button>
+                      </Link>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            </BlurFade>
+          )}
+
         </CardContent>
       </Card>
     </div>

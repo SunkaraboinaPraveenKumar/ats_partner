@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
 
 import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -73,11 +74,8 @@ export default function JobSeekerSignup() {
 
   const signup = useMutation(api.auth.signup);
   const createProfile = useMutation(api.profiles.createJobSeekerProfile);
-  const login = useMutation(api.auth.login);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const router = useRouter();
-  const {user, isLoggedIn} = useAuthStore();
-  const authStore = useAuthStore();
   const ingestResume = useAction(api.action.ingest);
 
   const handleNext = async () => {
@@ -136,22 +134,20 @@ export default function JobSeekerSignup() {
           });
           console.log("Signup successful! User ID:", userId);
 
-          const result = await login({
+          const signInResult = await signIn("credentials", {
+            redirect: false,
             email: form.getValues().email,
             password: form.getValues().password,
           });
-          console.log("User logged in successfully after signup.", result);
 
-          authStore.login({
-              ...result,
-              role: result.role as "job-seeker" | "recruiter"
-           });
-
-          if (!result?.userId) {
-              throw new Error("User not authenticated as job seeker after login.");
+          if (signInResult?.error) {
+            throw new Error(signInResult.error);
           }
           
-          const authenticatedUserId = result?.userId;
+          // After successful signIn, the session will be available globally
+          // No need to manually set authStore.login anymore.
+          // We can proceed with profile creation using the userId from signup.
+          const authenticatedUserId = userId.userId;
 
           let storageId: Id<"_storage"> | undefined;
           if (resumeFile) {
@@ -201,20 +197,22 @@ export default function JobSeekerSignup() {
             chunkSize: 1000,
             chunkOverlap: 200,
           });
+
           const docs = await splitter.createDocuments([resumeText]);
           const splitText = docs.map(doc => doc.pageContent);
+
           await ingestResume({
             splitText,
             userId: authenticatedUserId,
           });
 
-          toast.success("Account and profile created successfully!");
+          toast.success("Signup and profile created successfully!");
           router.push("/dashboard/job-seeker");
         } catch (error) {
-          console.error("Signup, login, upload, processing, or profile creation failed:", error);
+          console.error("Signup or profile creation failed:", error);
           toast.error(error instanceof Error ? error.message : "An unknown error occurred.");
         } finally {
-            setIsLoading(false);
+          setIsLoading(false);
         }
       }
     }
@@ -222,262 +220,208 @@ export default function JobSeekerSignup() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      
-      const maxSize = 5 * 1024 * 1024;
-      const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-
-      if (file.size > maxSize) {
-        toast.error("File size exceeds 5MB limit.");
-        setResumeFile(null);
-        return;
-      }
-
-      if (!allowedTypes.includes(file.type)) {
-        toast.error("Only PDF and DOCX files are allowed.");
-        setResumeFile(null);
-        return;
-      }
-
-      setResumeFile(file);
+      setResumeFile(e.target.files[0]);
     }
   };
 
   const handlePrevious = () => {
     if (step > 1) {
       setStep(step - 1);
-      setProgress(step === 2 ? 33 : 66);
+      setProgress(step === 3 ? 66 : 33);
     }
   };
 
   const isStepComplete = () => {
-      if (step === 1) {
-          return form.formState.isValid;
-      } else if (step === 2) {
-          return form.formState.isValid;
-      } else if (step === 3) {
-          return resumeFile !== null && Object.values(attitudeResults).every(result => result !== "");
-      }
-      return false;
-  }
+    if (step === 1) {
+      return form.formState.dirtyFields.name && form.formState.dirtyFields.email && form.formState.dirtyFields.password;
+    } else if (step === 2) {
+      return form.formState.dirtyFields.title && form.formState.dirtyFields.summary;
+    } else if (step === 3) {
+      return resumeFile !== null && Object.values(attitudeResults).every(result => result !== "");
+    }
+    return false;
+  };
 
   return (
     <div className="py-12 flex items-center justify-center min-h-screen">
-      <Card className="max-w-md">
+      <Card className="max-w-xl w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Create a Job Seeker Account</CardTitle>
-          <CardDescription>
-            Find your dream job with AI-powered matching
-          </CardDescription>
-          <Progress value={progress} className="h-2 mt-2" />
+          <CardTitle className="text-2xl">Job Seeker Signup</CardTitle>
+          <CardDescription>Join SwipeIt and find your dream job.</CardDescription>
+          <Progress value={progress} className="w-full mt-4" />
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              {step === 1 && (
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="john.doe@example.com" type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input placeholder="********" type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {step === 1 && (
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="john.doe@example.com" type="email" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input placeholder="********" type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
 
-              {step === 2 && (
-                <div className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Job Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Software Engineer" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="summary"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Professional Summary</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Brief description of your experience and skills"
-                            className="min-h-32"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <FormLabel>Resume Upload</FormLabel>
-                    <div className="flex items-center justify-center w-full">
-                      <label
-                        htmlFor="resume-upload"
-                        className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer bg-muted/40 hover:bg-muted/60"
-                      >
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
-                          <p className="mb-1 text-sm text-muted-foreground">
-                            <span className="font-semibold">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            PDF or DOCX (MAX. 5MB)
-                          </p>
-                          {resumeFile && (
-                            <p className="mt-2 text-sm font-medium text-primary">
-                              {resumeFile.name}
-                            </p>
-                          )}
-                        </div>
-                        <input
-                          id="resume-upload"
-                          type="file"
-                          accept=".pdf,.docx"
-                          className="hidden"
-                          onChange={handleFileChange}
+            {step === 2 && (
+              <div className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current or Desired Job Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Software Engineer, Data Scientist" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="summary"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Professional Summary</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="A concise overview of your skills, experience, and career goals."
+                          rows={5}
+                          {...field}
                         />
-                      </label>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <Label htmlFor="resume-upload" className="mb-2 block">Upload Resume (PDF, DOCX)</Label>
+                  <Input
+                    id="resume-upload"
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="block w-full text-sm text-gray-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-violet-50 file:text-violet-700
+                      hover:file:bg-violet-100"
+                  />
+                  {resumeFile && <p className="mt-2 text-sm text-gray-600">Selected file: {resumeFile.name}</p>}
+                </div>
+
+                <div>
+                  <Label className="mb-2 block">Attitude Assessment</Label>
+                  <p className="text-sm text-muted-foreground mb-4">Answer a few questions to help us understand your work preferences.</p>
+                  <div className="space-y-4">
+                    <div className="grid gap-2">
+                      <Label>How do you approach problem-solving?</Label>
+                      <Tabs defaultValue="analytical" onValueChange={(value) => setAttitudeResults(prev => ({ ...prev, problemSolving: value }))}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          <TabsTrigger value="analytical">Analytical</TabsTrigger>
+                          <TabsTrigger value="creative">Creative</TabsTrigger>
+                          <TabsTrigger value="collaborative">Collaborative</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>What is your preferred work style?</Label>
+                      <Tabs defaultValue="independent" onValueChange={(value) => setAttitudeResults(prev => ({ ...prev, workStyle: value }))}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          <TabsTrigger value="independent">Independent</TabsTrigger>
+                          <TabsTrigger value="team-oriented">Team-Oriented</TabsTrigger>
+                          <TabsTrigger value="hybrid">Hybrid</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>How do you prefer to interact within a team?</Label>
+                      <Tabs defaultValue="direct" onValueChange={(value) => setAttitudeResults(prev => ({ ...prev, teamDynamics: value }))}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          <TabsTrigger value="direct">Direct</TabsTrigger>
+                          <TabsTrigger value="supportive">Supportive</TabsTrigger>
+                          <TabsTrigger value="leading">Leading</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>What kind of work environment do you thrive in?</Label>
+                      <Tabs defaultValue="structured" onValueChange={(value) => setAttitudeResults(prev => ({ ...prev, workEnvironment: value }))}>
+                        <TabsList className="grid w-full grid-cols-3">
+                          <TabsTrigger value="structured">Structured</TabsTrigger>
+                          <TabsTrigger value="flexible">Flexible</TabsTrigger>
+                          <TabsTrigger value="fast-paced">Fast-Paced</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <FormLabel>Attitude Assessment</FormLabel>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This short quiz helps match you with companies that share your work values.
-                    </p>
-
-                    <Tabs defaultValue="q1" className="w-full">
-                      <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="q1">Q1</TabsTrigger>
-                        <TabsTrigger value="q2">Q2</TabsTrigger>
-                        <TabsTrigger value="q3">Q3</TabsTrigger>
-                        <TabsTrigger value="q4">Q4</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="q1" className="p-4 border rounded-md mt-2">
-                        <h4 className="font-medium mb-2">I prefer working:</h4>
-                        <div className="flex flex-col gap-2">
-                          <Button type="button" variant={attitudeResults.workStyle === "structured" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workStyle: "structured"})}>In a structured environment</Button>
-                          <Button type="button" variant={attitudeResults.workStyle === "flexibility" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workStyle: "flexibility"})}>With flexibility and autonomy</Button>
-                          <Button type="button" variant={attitudeResults.workStyle === "balance" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workStyle: "balance"})}>A balance of both</Button>
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="q2" className="p-4 border rounded-md mt-2">
-                        <h4 className="font-medium mb-2">When faced with a challenge, I typically:</h4>
-                        <div className="flex flex-col gap-2">
-                          <Button type="button" variant={attitudeResults.problemSolving === "procedures" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, problemSolving: "procedures"})}>Follow established procedures</Button>
-                          <Button type="button" variant={attitudeResults.problemSolving === "innovative" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, problemSolving: "innovative"})}>Look for innovative solutions</Button>
-                          <Button type="button" variant={attitudeResults.problemSolving === "consult" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, problemSolving: "consult"})}>Consult with team members first</Button>
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="q3" className="p-4 border rounded-md mt-2">
-                        <h4 className="font-medium mb-2">My ideal work culture is:</h4>
-                        <div className="flex flex-col gap-2">
-                          <Button type="button" variant={attitudeResults.teamDynamics === "competitive" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, teamDynamics: "competitive"})}>Competitive and fast-paced</Button>
-                          <Button type="button" variant={attitudeResults.teamDynamics === "collaborative" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, teamDynamics: "collaborative"})}>Collaborative and supportive</Button>
-                          <Button type="button" variant={attitudeResults.teamDynamics === "independent" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, teamDynamics: "independent"})}>Independent and goal-oriented</Button>
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="q4" className="p-4 border rounded-md mt-2">
-                        <h4 className="font-medium mb-2">I thrive in a work environment that is:</h4>
-                        <div className="flex flex-col gap-2">
-                          <Button type="button" variant={attitudeResults.workEnvironment === "fast-paced" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workEnvironment: "fast-paced"})}>Fast-paced and dynamic</Button>
-                          <Button type="button" variant={attitudeResults.workEnvironment === "stable" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workEnvironment: "stable"})}>Stable and predictable</Button>
-                          <Button type="button" variant={attitudeResults.workEnvironment === "innovative" ? "default" : "outline"} className="justify-start" onClick={() => setAttitudeResults({...attitudeResults, workEnvironment: "innovative"})}>Innovative and open to change</Button>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                  </div>
                 </div>
-              )}
-
-              <div className="flex justify-between pt-2">
-                {step > 1 ? (
-                  <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading}>
-                    Previous
-                  </Button>
-                ) : (
-                  <Button type="button" variant="ghost" asChild disabled={isLoading}>
-                    <Link href="/">Cancel</Link>
-                  </Button>
-                )}
-                {step < 3 ? (
-                    <Button
-                       type="button"
-                       onClick={handleNext}
-                       disabled={isLoading}
-                    >
-                       Next
-                    </Button>
-                ) : (
-                    <Button
-                       type="submit"
-                       disabled={isLoading}
-                    >
-                       {isLoading ? (
-                            <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Creating Account...
-                            </>
-                        ) : (
-                            "Create Account"
-                        )}
-                    </Button>
-                )}
               </div>
-            </form>
-          </Form>
+            )}
+
+            <div className="flex justify-between mt-6">
+              {step > 1 && (
+                <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading}>
+                  Previous
+                </Button>
+              )}
+              {step < 3 ? (
+                <Button type="button" onClick={handleNext} disabled={isLoading || !isStepComplete()}>
+                  Next {isLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isLoading || !isStepComplete()}>
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign Up
+                </Button>
+              )}
+            </div>
+          </form>
         </CardContent>
-        <CardFooter className="flex justify-center border-t pt-6">
+        <CardFooter className="flex flex-col items-center gap-4 border-t pt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary font-medium">
+            <Link href="/login" className="text-primary font-medium hover:underline">
               Log in
             </Link>
           </p>

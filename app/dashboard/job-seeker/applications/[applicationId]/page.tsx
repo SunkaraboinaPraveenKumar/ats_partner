@@ -11,22 +11,22 @@ import { Loader2, Briefcase, User, Percent, Mail, MapPin, Calendar, FileText, Ex
 import Link from "next/link";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import React, { useEffect } from 'react';
-import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 export default function ApplicationDetailPage() {
   const params = useParams();
   const applicationId = params.applicationId as Id<"applications">;
 
   const application = useQuery(api.applications.getApplicationById, { applicationId });
-  const { isLoggedIn } = useAuthStore();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [isLoggedIn, router]);
+  }, [status, router]);
 
   if (application === undefined) {
     return (
@@ -50,7 +50,7 @@ export default function ApplicationDetailPage() {
     );
   }
 
-  const { jobPost, user: jobSeeker, matchRatio, status } = application;
+  const { jobPost, user: jobSeeker, matchRatio, status: applicationStatus } = application;
 
   return (
     <div className="container mx-auto py-8">
@@ -59,7 +59,7 @@ export default function ApplicationDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-2xl font-bold mb-2">
               <FileText className="h-6 w-6 text-primary" /> Application for {jobPost.title}
-              <Badge className={`ml-auto capitalize ${status === "accepted" ? "bg-green-500 text-white" : status === "rejected" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}>{status}</Badge>
+              <Badge className={`ml-auto capitalize ${applicationStatus === "accepted" ? "bg-green-500 text-white" : applicationStatus === "rejected" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}>{applicationStatus}</Badge>
             </CardTitle>
             <CardDescription className="flex items-center gap-2 text-md text-gray-700 dark:text-gray-300">
               <User className="h-4 w-4 text-primary" /> Applied by {jobSeeker.name}

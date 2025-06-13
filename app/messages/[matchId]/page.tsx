@@ -8,8 +8,8 @@ import MessageInput from "../_components/MessageInput";
 import { Id, Doc } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
-import { useAuthStore } from "@/store/authStore";
 import { Bot, AlertCircle } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 // Helper function to make the API call to the Groq route
 export async function callGroqApi({
@@ -30,7 +30,7 @@ export async function callGroqApi({
   jobSeekerProfile?: Doc<"jobSeekerProfiles"> | null;
   onNewMessage: (content: string) => void;
   onError: (error: string) => void;
-  onComplete: (finalContent: string) => void; // Pass final content to onComplete
+  onComplete: (finalContent: string, aiUserId: Id<"users">) => void; // Pass final content and aiUserId to onComplete
   aiUserId: Id<"users">;
 }) {
   try {
@@ -79,7 +79,7 @@ export async function callGroqApi({
           const data = line.slice(6); // Remove 'data: ' prefix
           
           if (data === '[DONE]') {
-            onComplete(streamingContent); // Pass the accumulated content
+            onComplete(streamingContent, aiUserId); // Pass the accumulated content and aiUserId
             return;
           }
           
@@ -104,11 +104,11 @@ export async function callGroqApi({
     }
     
     // Final completion with accumulated content
-    onComplete(streamingContent);
+    onComplete(streamingContent, aiUserId);
   } catch (error: any) {
     console.error("Error calling Groq API:", error);
     onError(error.message || "An error occurred while fetching AI response.");
-    onComplete(""); // Pass empty string on error
+    onComplete("", aiUserId); // Pass empty string on error and aiUserId
   }
 }
 
@@ -119,12 +119,12 @@ export default function ChatPage() {
   const matchId = matchIdString as Id<"matches">;
 
   // Fetch authenticated user
-  const { user } = useAuthStore();
+  const { data: session, status } = useSession();
 
   // Fetch messages and job post
   const messagesAndJob = useQuery(api.messages.getMessages, { 
     matchId,
-    userId: user?.userId as Id<"users">
+    userId: session?.user?.id as Id<"users">
   });
   const messages = messagesAndJob?.messages;
   const jobPost = messagesAndJob?.jobPost;
@@ -137,13 +137,13 @@ export default function ChatPage() {
 
   const jobSeekerProfile = useQuery(
     api.profiles.getJobSeekerProfile,
-    user ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Fetch user's application
   const application = useQuery(api.applications.getApplicationForMatch, { 
     matchId,
-    userId: user?.userId as Id<"users">
+    userId: session?.user?.id as Id<"users">
   });
 
   // Send message mutation
@@ -162,15 +162,17 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
 
-  // Redirect if no match is found
+  // Redirect if no match is found or not authenticated
   useEffect(() => {
-    if (messagesAndJob === null) {
-      router.push('/dashboard/job-seeker');
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (messagesAndJob === null) {
+      router.push('/dashboard/job-seeker'); // or a more generic dashboard
     }
-  }, [messagesAndJob, router]);
+  }, [messagesAndJob, router, status]);
 
   const handleAskAi = async (userMessageContent?: string) => {
-    if (!jobPost || !messages || !user) return;
+    if (!jobPost || !messages || !session?.user?.id) return;
 
     setIsAiLoading(true);
     setIsStreaming(true);
@@ -180,11 +182,11 @@ export default function ChatPage() {
     // Use existing messages + the potential user message triggering this AI call
     const messagesForApi = userMessageContent
       ? [...messages.map(msg => ({
-          role: (msg.senderId === user.userId ? 'user' : 'assistant') as "user" | "assistant",
+          role: (msg.senderId === session.user.id ? 'user' : 'assistant') as "user" | "assistant",
           content: msg.content
         })), { role: 'user' as "user", content: userMessageContent }]
       : messages.map(msg => ({
-          role: (msg.senderId === user.userId ? 'user' : 'assistant') as "user" | "assistant",
+          role: (msg.senderId === session.user.id ? 'user' : 'assistant') as "user" | "assistant",
           content: msg.content
         }));
 
@@ -201,89 +203,51 @@ export default function ChatPage() {
         onError: (error) => {
           setAiError(error);
           setIsStreaming(false);
-          setIsAiLoading(false);
         },
-        onComplete: async (finalContent) => {
-          console.log("AI streaming complete. Final content:", finalContent);
-          
-          // Save the complete AI response as a message
-          if (finalContent.trim()) {
-            try {
-              const messageResult = await sendMessage({
-                matchId,
-                content: finalContent.trim(),
-                userId: user?.userId as Id<"users">, // Use consistent AI user ID
-                isAiResponse: true,
-                messageType: "ai"
-              });
-              console.log("AI message saved successfully:", messageResult);
-            } catch (error) {
-              console.error("Error saving AI response:", error);
-              setAiError("Failed to save AI response");
-            }
-          } else {
-            console.warn("No content to save from AI stream.");
+        onComplete: async (finalContent, aiUserIdInCallback) => {
+          if (finalContent) {
+            // Save the complete AI response to Convex
+            await sendMessage({
+              matchId: matchId,
+              userId: aiUserIdInCallback, // Corrected to use the AI user ID from callback
+              content: finalContent,
+              isAiResponse: true,
+            });
           }
-          
-          setIsStreaming(false);
           setIsAiLoading(false);
-          setStreamingContent(""); // Clear streaming content after saving
+          setIsStreaming(false);
         },
-        aiUserId: user?.userId as Id<"users">,
+        aiUserId: session.user.id as Id<"users">, // Ensure this is the actual AI user ID
       });
-    } catch (error) {
-      setAiError(error instanceof Error ? error.message : "An error occurred");
-      setIsStreaming(false);
+    } catch (error: any) {
+      console.error("Error in handleAskAi:", error);
+      setAiError(error.message || "Failed to get AI response.");
       setIsAiLoading(false);
-      setStreamingContent("");
+      setIsStreaming(false);
     }
   };
 
-  // Loading state
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Authenticating...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleSendMessage = async (content: string) => {
+    if (!content.trim() || !session?.user?.id) return;
 
-  if (!messages || !jobPost) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading chat and job details...</p>
-        </div>
-      </div>
-    );
-  }
+    try {
+      await sendMessage({
+        matchId: matchId,
+        userId: session.user.id as Id<"users">,
+        content,
+      });
 
-  // Error state
-  if (messagesAndJob === null) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center text-red-500">
-          <AlertCircle className="h-12 w-12 mx-auto mb-4" />
-          <p className="text-lg font-semibold">Error loading chat details</p>
-          <p className="text-sm mt-2 text-gray-500">Please make sure you have access to this conversation.</p>
-          <Button 
-            onClick={() => router.push('/dashboard/job-seeker')} 
-            className="mt-4"
-            variant="outline"
-          >
-            Back to Dashboard
-          </Button>
-        </div>
-      </div>
-    );
-  }
+      // After user sends a message, trigger AI response
+      // Make sure the AI user ID is correctly passed here
+      await handleAskAi(content); // Pass the user's message content to the AI handler
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
+  };
 
   return (
-    <div className="flex flex-col h-screen max-h-screen">
+    <div className="flex flex-col h-[calc(100vh-100px)] lg:h-[calc(100vh-120px)]">
       {/* Header for Chat UI */}
       <div className="sticky top-0 z-10 bg-background border-b p-4 flex items-center justify-between gap-2">
         <div className="flex items-center gap-3">
@@ -304,7 +268,7 @@ export default function ChatPage() {
       </div>
 
       {/* Main chat area - scrollable */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={messagesEndRef}>
         {aiError && (
           <div className="bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 p-3 rounded-md flex items-center gap-2 mb-4">
             <AlertCircle className="h-5 w-5" />
@@ -313,8 +277,9 @@ export default function ChatPage() {
         )}
         <MessageList 
           messages={messages || []}
-          currentUserId={user?.userId as Id<"users">}
+          currentUserId={session?.user?.id as Id<"users">}
           application={application}
+          messagesEndRef={messagesEndRef}
         />
         {isStreaming && streamingContent && (
           <div className="flex items-start gap-3">
@@ -330,7 +295,7 @@ export default function ChatPage() {
               <div className="inline-block max-w-full rounded-lg px-4 py-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800">
                 <div 
                   className="text-sm leading-relaxed text-gray-900 dark:text-gray-100"
-                  dangerouslySetInnerHTML={{ __html: streamingContent }}
+                  dangerouslySetInnerHTML={{ __html: streamingContent.replace(/\n/g, '<br>') }}
                 />
               </div>
             </div>
@@ -341,14 +306,7 @@ export default function ChatPage() {
 
       {/* Message Input fixed at bottom */}
       <div className="sticky bottom-0 z-10 bg-background border-t p-4">
-        <MessageInput 
-          matchId={matchId}
-          user={user}
-          messages={messages || []}
-          jobPost={jobPost}
-          application={application || null}
-          onTriggerAi={handleAskAi}
-        />
+        <MessageInput onSendMessage={handleSendMessage} isLoading={isAiLoading} />
       </div>
     </div>
   );

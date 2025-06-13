@@ -1,24 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
+// import { useMutation } from "convex/react"; // No longer needed
+// import { api } from "@/convex/_generated/api"; // No longer needed
 import { Button } from "@/components/ui/button";
 import { Send, Paperclip, Smile } from "lucide-react";
-import { Id, Doc } from '@/convex/_generated/dataModel';
+// import { Id, Doc } from '@/convex/_generated/dataModel'; // No longer needed
 
 interface MessageInputProps {
-  matchId: Id<"matches">;
-  user: any;
-  messages: any[];
-  jobPost: Doc<"jobPosts">;
-  application: Doc<"applications"> | null;
-  onTriggerAi: (messageContent: string) => Promise<void>;
+  onSendMessage: (content: string) => Promise<void>;
+  isLoading: boolean;
 }
 
-const MessageInput: React.FC<MessageInputProps> = ({ matchId, user, messages, jobPost, application, onTriggerAi }) => {
+const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading }) => {
   const [message, setMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  // const [isSending, setIsSending] = useState(false); // No longer needed
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const sendMessage = useMutation(api.messages.sendMessage);
+  // const sendMessage = useMutation(api.messages.sendMessage); // No longer needed
 
   // Auto-resize textarea
   useEffect(() => {
@@ -29,25 +25,18 @@ const MessageInput: React.FC<MessageInputProps> = ({ matchId, user, messages, jo
   }, [message]);
 
   const handleSend = async () => {
-    if (!message.trim() || !user?.userId || isSending) return;
+    if (!message.trim() || isLoading) return; // Use isLoading from props
 
     const messageToSend = message.trim();
     setMessage("");
-    setIsSending(true);
+    // setIsSending(true); // No longer needed
 
     try {
-      // Send user message first
-      await sendMessage({
-        matchId,
-        content: messageToSend,
-        userId: user.userId as Id<"users">
-      });
-      await onTriggerAi(messageToSend);
-      
+      await onSendMessage(messageToSend);
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error sending message:", error);
     } finally {
-      setIsSending(false);
+      // setIsSending(false); // No longer needed
     }
   };
 
@@ -68,7 +57,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ matchId, user, messages, jo
       <div className="flex flex-wrap gap-2">
         {[
           "Tell me more about this role",
-          "What's the company culture like?",
+          "What\'s the company culture like?",
           "What are the growth opportunities?",
           "Can you explain the benefits?"
         ].map((suggestion) => (
@@ -105,7 +94,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ matchId, user, messages, jo
             onKeyDown={handleKeyDown}
             className="w-full resize-none border-none bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none min-h-[24px] max-h-[120px]"
             rows={1}
-            disabled={isSending}
+            disabled={isLoading} // Use isLoading from props
           />
           
           {/* Character count */}
@@ -128,10 +117,10 @@ const MessageInput: React.FC<MessageInputProps> = ({ matchId, user, messages, jo
         {/* Send button */}
         <Button
           onClick={handleSend}
-          disabled={!message.trim() || isSending}
+          disabled={!message.trim() || isLoading} // Use isLoading from props
           className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white px-4 py-2"
         >
-          {isSending ? (
+          {isLoading ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           ) : (
             <Send className="h-5 w-5" />

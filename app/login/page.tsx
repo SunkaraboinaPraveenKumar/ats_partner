@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +23,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-
 const formSchema = z.object({
   email: z.string().email({
     message: "Please enter a valid email address.",
@@ -38,6 +35,8 @@ const formSchema = z.object({
 export default function Login() {
   const [userType, setUserType] = useState<"job-seeker" | "recruiter">("job-seeker");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { data: session, status } = useSession();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -47,25 +46,30 @@ export default function Login() {
     },
   });
 
-  const login = useMutation(api.auth.login);
-  const router = useRouter();
-  const authStore = useAuthStore();
+  useEffect(() => {
+    if (status === "authenticated" && session?.user?.role) {
+      if (session.user.role === "job-seeker") {
+        router.push("/dashboard/job-seeker");
+      } else if (session.user.role === "recruiter") {
+        router.push("/dashboard/recruiter");
+      }
+    }
+  }, [session, status, router]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     console.log("Attempting login with:", values, userType);
     setIsLoading(true);
     try {
-      const result = await login({
+      const result = await signIn("credentials", {
+        redirect: false,
         email: values.email,
         password: values.password,
       });
-      console.log("Login successful!", result);
-      toast.success("Login successful!");
-      authStore.login({ ...result, role: result.role as "job-seeker" | "recruiter" });
-      if (result?.role === "recruiter") {
-        router.push("/dashboard/recruiter");
-      } else if (result?.role === "job-seeker") {
-        router.push("/dashboard/job-seeker");
+
+      if (result?.error) {
+        toast.error(result.error);
+      } else if (result?.ok) {
+        toast.success("Login successful!");
       }
     } catch (error) {
       console.error("Login failed:", error);
@@ -73,6 +77,17 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Logging in...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

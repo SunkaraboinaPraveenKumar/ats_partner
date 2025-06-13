@@ -3,7 +3,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useAuthStore } from "@/store/authStore";
 import { Id } from "@/convex/_generated/dataModel";
 import SwipeCard from "@/components/dashboard/swipe-card";
 import { FileText, Search, SlidersHorizontal, Building2, MapPin, Briefcase, X, RotateCcw } from "lucide-react";
@@ -18,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from 'next/navigation';
 import { BlurFade } from '@/components/magicui/blur-fade';
+import { useSession } from "next-auth/react";
 
 // Import the same constants from job-seeker page
 const SALARY_RANGES = [
@@ -47,16 +47,16 @@ interface FilterState {
 
 export default function RecommendedJobsPage() {
   const router = useRouter();
-  const { user, isLoggedIn } = useAuthStore();
+  const { data: session, status } = useSession();
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [isLoggedIn, router]);
+  }, [status, router]);
 
   // Use the same filter state as job-seeker page
   const [filters, setFilters] = useState<FilterState>({
@@ -71,12 +71,12 @@ export default function RecommendedJobsPage() {
   // Fetch recommended jobs
   const recommendedJobs = useQuery(
     api.jobs.getRecommendedJobs,
-    user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Fetch applications for filtering
   const applications = useQuery(api.applications.getApplicationsByUser,
-    user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Extract unique values for filter options (same as job-seeker page)
@@ -225,7 +225,6 @@ export default function RecommendedJobsPage() {
           </div>
           <Button
             onClick={() => router.push('/dashboard/job-seeker')}
-            variant="outline"
             className="flex items-center gap-2"
           >
             <FileText className="h-4 w-4" />
@@ -471,10 +470,14 @@ export default function RecommendedJobsPage() {
                     type="job"
                     data={{
                       ...job,
-                      skills: job.requiredSkills,
+                      requiredSkills: job.requiredSkills,
+                      // @ts-ignore
                       matchPercentage: Math.round(job.matchScore * 100),
                     }}
-                    onSwipe={() => { }} // No swipe needed, can be a no-op
+                    userId={session?.user?.id as Id<"users">}
+                    isApplied={applications?.some(app => app.jobPostId === job._id) || false}
+                    userProfile={undefined}
+                    onSwipe={() => { /* No swipe needed for recommended cards display */ }}
                   />
                 </BlurFade>
               </div>

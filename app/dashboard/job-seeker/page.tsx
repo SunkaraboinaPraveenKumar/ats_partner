@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useQuery, useAction, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useAuthStore } from '@/store/authStore';
 import SwipeCard from "@/components/dashboard/swipe-card";
 import { Id } from '@/convex/_generated/dataModel';
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
@@ -43,9 +42,11 @@ import {
   CheckCircle,
   Clock,
   RotateCcw,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react";
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 
 // Salary ranges for filtering
 const SALARY_RANGES = [
@@ -75,17 +76,15 @@ interface FilterState {
 }
 
 function JobSeekerDashboardPage() {
-  const { user, isLoggedIn } = useAuthStore();
   const router = useRouter();
+  const { data: session, status } = useSession();
 
-  // Redirect if not logged in or user data is missing
+  // Redirect if not logged in
   useEffect(() => {
-    if (!isLoggedIn) {
-      router.push('/login');
-    } else if (user === null) { // If logged in but user object is null
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [isLoggedIn, user, router]);
+  }, [status, router]);
 
   // State for filters
   const [filters, setFilters] = useState<FilterState>({
@@ -102,10 +101,10 @@ function JobSeekerDashboardPage() {
   // Fetch data
   const jobPosts = useQuery(api.jobs.getJobPosts, { status: "active" });
   const jobSeekerProfile = useQuery(api.profiles.getJobSeekerProfile,
-    user ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
   const applications = useQuery(api.applications.getApplicationsByUser,
-    user ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   // Actions and mutations
@@ -196,45 +195,35 @@ function JobSeekerDashboardPage() {
 
   // Resume ingestion effect (keeping existing logic)
   useEffect(() => {
-    if (jobSeekerProfile && jobSeekerProfile.resumeText && !jobSeekerProfile.resumeIngested) {
-      console.log("Attempting to ingest resume embeddings...");
+    const ingestAndProcessResume = async () => {
+      if (jobSeekerProfile && jobSeekerProfile.resumeText && !jobSeekerProfile.resumeIngested) {
+        console.log("Attempting to ingest resume embeddings...");
+        try {
+          const splitText = (await new RecursiveCharacterTextSplitter({
+            chunkSize: 1000,
+            chunkOverlap: 200,
+          }).createDocuments([jobSeekerProfile.resumeText])).map(doc => doc.pageContent);
+          
+          await ingestResume({
+            splitText,
+            userId: session?.user?.id as Id<"users">,
+          });
+          
+          await updateJobSeekerProfile({
+            userId: session?.user?.id as Id<"users">,
+            resumeIngested: true,
+          });
+          toast.success("Resume embeddings ingested successfully!");
+        } catch (error) {
+          console.error("Error ingesting resume embeddings:", error);
+          toast.error("Failed to ingest resume embeddings.");
+        }
+      }
+    };
 
-      const splitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
-      });
+    ingestAndProcessResume();
+  }, [jobSeekerProfile, ingestResume, updateJobSeekerProfile, session]);
 
-      splitter.createDocuments([jobSeekerProfile.resumeText])
-        .then(docs => {
-          const splitText = docs.map(doc => doc.pageContent);
-          if (splitText.length > 0 && user?.userId) {
-            ingestResume({
-              splitText: splitText,
-              userId: user.userId as Id<"users">,
-            })
-              .then(() => {
-                console.log("Resume ingestion action triggered successfully.");
-                updateJobSeekerProfile({
-                  userId: user.userId as Id<"users">,
-                  resumeIngested: true,
-                }).catch(error => {
-                  console.error("Failed to update resumeIngested flag:", error);
-                });
-              })
-              .catch(error => {
-                console.error("Failed to trigger resume ingestion action:", error);
-                toast.error("Failed to process resume embeddings.");
-              });
-          }
-        })
-        .catch(error => {
-          console.error("Error splitting resume text:", error);
-          toast.error("Failed to split resume text for processing.");
-        });
-    }
-  }, [jobSeekerProfile, user?.userId, ingestResume, updateJobSeekerProfile]);
-
-  // Handle filter updates
   const updateFilter = (key: keyof FilterState, value: any) => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
@@ -267,19 +256,17 @@ function JobSeekerDashboardPage() {
   };
 
   // Helper to count active filters for Badge
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-    if (filters.search) count++;
-    if (filters.salaryRange !== 'any') count++;
-    if (filters.location) count++;
-    if (filters.applicationStatus !== 'all') count++;
-    if (filters.company) count++;
-    count += filters.selectedSkills.length;
-    return count;
-  }, [filters]);
+  const activeFiltersCount = [
+    filters.search,
+    filters.company,
+    filters.location,
+    filters.salaryRange !== 'any' ? filters.salaryRange : '',
+    filters.applicationStatus !== 'all' ? filters.applicationStatus : '',
+    ...filters.selectedSkills
+  ].filter(Boolean).length;
 
   // Loading and access control
-  if (jobPosts === undefined) {
+  if (status === 'loading' || jobPosts === undefined) {
     return (
       <div className=" py-8 text-center">
         <div className="animate-pulse">Loading job posts...</div>
@@ -287,7 +274,7 @@ function JobSeekerDashboardPage() {
     );
   }
 
-  if (!isLoggedIn || user?.role !== 'job-seeker') {
+  if (status === 'unauthenticated' || session?.user?.role !== 'job-seeker') {
     return (
       <div className=" py-8 text-center">
         <div className="text-lg text-muted-foreground">
@@ -555,11 +542,11 @@ function JobSeekerDashboardPage() {
                 <BlurFade key={job._id} delay={0.1} duration={0.8} inView={true}>
                   <SwipeCard
                     type="job"
-                    data={{
-                      ...job,
-                      skills: job.requiredSkills,
-                    }}
-                    onSwipe={() => { }} // No swipe needed, can be a no-op
+                    data={job}
+                    userId={session?.user?.id as Id<"users">}
+                    isApplied={applications?.some(app => app.jobPostId === job._id) || false}
+                    userProfile={jobSeekerProfile || undefined}
+                    onSwipe={() => { /* No swipe needed for job cards display */ }}
                   />
                 </BlurFade>
               </div>
@@ -570,5 +557,4 @@ function JobSeekerDashboardPage() {
     </div>
   );
 }
-
 export default JobSeekerDashboardPage;

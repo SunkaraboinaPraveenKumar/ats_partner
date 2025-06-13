@@ -52,7 +52,7 @@ export default function TermsOfServicePage() {
             <section>
               <h3 className="text-xl font-semibold mb-2 flex items-center gap-2"><Award className="h-6 w-6 text-primary" /> Intellectual Property</h3>
               <p className="text-gray-700 dark:text-gray-300">
-                The Service and its original content (excluding Content provided by users), features and functionality are and will remain the exclusive property of SwipeIt and its licensors. The Service is protected by copyright, trademark, and other laws of both the United States and foreign countries.
+                The Service and its original content (excluding Content provided by users), features and functionality are and will remain the exclusive property of SwipeIt and its licensors. The Service is protected by copyright, trademark, and other laws of both India and foreign countries.
               </p>
             </section>
           </BlurFade>

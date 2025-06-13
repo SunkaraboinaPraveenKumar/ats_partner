@@ -10,20 +10,20 @@ import { Loader2, Briefcase, MapPin, IndianRupee, Calendar, Lightbulb, User, Ext
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import React, { useEffect } from 'react';
+import { useSession, signOut } from "next-auth/react";
 
 export default function JobDetailPage() {
     const params = useParams();
     const jobId = params.jobId as Id<"jobPosts">;
 
     const jobPost = useQuery(api.jobs.getJobPostById, { jobId });
-    const { user, isLoggedIn } = useAuthStore();
+    const { data: session, status } = useSession();
     const createApplication = useMutation(api.applications.createApplication);
     const application = useQuery(api.applications.getApplicationByUserAndJob, {
-        userId: user?.userId as Id<"users">,
+        userId: session?.user?.id as Id<"users">,
         jobPostId: jobId,
     });
 
@@ -31,20 +31,20 @@ export default function JobDetailPage() {
     const getOrCreateMatch = useMutation(api.matching.getOrCreateMatch);
 
     useEffect(() => {
-      if (!isLoggedIn) {
+      if (status === 'unauthenticated') {
         router.push('/login');
       }
-    }, [isLoggedIn, router]);
+    }, [status, router]);
 
     const handleApply = async () => {
-        if (!user?.userId) {
+        if (!session?.user?.id) {
             toast.error("Please log in to apply");
             return;
         }
 
         try {
             await createApplication({
-                userId: user.userId as Id<"users">,
+                userId: session.user.id as Id<"users">,
                 jobPostId: jobId,
             });
             toast.success("Application submitted successfully!");
@@ -58,7 +58,7 @@ export default function JobDetailPage() {
     };
 
     const handleChat = async () => {
-        if (!user?.userId) {
+        if (!session?.user?.id) {
             toast.error("Please log in to start a chat.");
             return;
         }
@@ -66,7 +66,7 @@ export default function JobDetailPage() {
         try {
             const match = await getOrCreateMatch({
                 jobPostId: jobId,
-                userId: user.userId as Id<"users">,
+                userId: session.user.id as Id<"users">,
             });
 
             const matchId = typeof match === 'string' ? match : match._id;

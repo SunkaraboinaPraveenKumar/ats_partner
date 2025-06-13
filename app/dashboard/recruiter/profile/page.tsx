@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react'
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
-import { useAuthStore } from '@/store/authStore';
+import { useSession } from 'next-auth/react';
 import { Id } from '@/convex/_generated/dataModel';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -16,32 +16,32 @@ import { BlurFade } from "@/components/magicui/blur-fade";
 import { Building2, Users, Factory, ClipboardList, Smile } from 'lucide-react';
 
 function RecruiterProfilePage() {
-  const { user, isLoggedIn } = useAuthStore();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (status === 'unauthenticated') {
       router.push('/login');
-    } else if (user === null) {
+    } else if (session === null) {
       router.push('/login');
     }
-  }, [isLoggedIn, user, router]);
+  }, [session, status, router]);
 
   const recruiterProfile = useQuery(
     api.profiles.getRecruiterProfile,
-    user?.role === 'recruiter' && user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.role === 'recruiter' && session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
-  if (recruiterProfile === undefined) {
+  if (status === 'loading' || recruiterProfile === undefined) {
     return <div className=" py-8 text-center">Loading profile...</div>;
   }
 
-  if (!isLoggedIn || user?.role !== 'recruiter') {
+  if (status === 'unauthenticated' || session?.user?.role !== 'recruiter') {
     return <div className=" py-8 text-center">Access Denied: Only recruiters can view this page.</div>;
   }
 
   if (!recruiterProfile) {
-     return <div className=" py-8 text-center">Recruiter profile not found.</div>;
+    return <div className=" py-8 text-center">Recruiter profile not found.</div>;
   }
 
   return (
@@ -76,7 +76,7 @@ function RecruiterProfilePage() {
             <BlurFade delay={0.5} duration={0.5} inView={true}>
               <div>
                 <Label htmlFor="companyDescription" className="flex items-center gap-2"><ClipboardList className="h-5 w-5 text-primary" />Company Description</Label>
-                <Textarea id="companyDescription" value={recruiterProfile.companyDescription} readOnly className="mt-1 min-h-[100px]" />
+                <p id="companyDescription" className="mt-1 min-h-[100px]">{recruiterProfile.companyDescription}</p>
               </div>
             </BlurFade>
 

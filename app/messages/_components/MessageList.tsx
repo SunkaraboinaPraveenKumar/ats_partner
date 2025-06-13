@@ -10,17 +10,20 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScriptCopyBtn } from "@/components/magicui/script-copy-btn";
+import { Button } from "@/components/ui/button";
 
 interface MessageListProps {
   messages: Doc<"messages">[];
   currentUserId?: Id<"users">;
   application?: Doc<"applications"> | null;
+  messagesEndRef: React.RefObject<HTMLDivElement>;
 }
 
 const MessageList: React.FC<MessageListProps> = ({ 
   messages, 
   currentUserId,
-  application 
+  application,
+  messagesEndRef
 }) => {
   const formatMessageTime = (timestamp: number) => {
     try {
@@ -161,14 +164,19 @@ const MessageList: React.FC<MessageListProps> = ({
                       __html: formatMessageContent(message.content) 
                     }} 
                   />
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <ScriptCopyBtn
-                        value={message.content}
-                        className={`absolute right-2 -bottom-2 p-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity duration-200`}
-                      />
-                    </TooltipTrigger>
-                  </Tooltip>
+                  {isAi && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <ScriptCopyBtn
+                          value={message.content}
+                          className={`absolute right-2`}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Copy message</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                 </div>
 
                 {/* Message time (shown on hover) */}
@@ -182,6 +190,7 @@ const MessageList: React.FC<MessageListProps> = ({
           </div>
         );
       })}
+      <div ref={messagesEndRef} />
       </TooltipProvider>
     </div>
   );

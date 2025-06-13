@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -76,9 +76,7 @@ export default function RecruiterSignup() {
 
   const signup = useMutation(api.auth.signup);
   const createProfile = useMutation(api.profiles.createRecruiterProfile);
-  const login = useMutation(api.auth.login);
   const router = useRouter();
-  const authStore = useAuthStore();
 
   const handleNext = async () => {
     let isValid = false;
@@ -116,16 +114,22 @@ export default function RecruiterSignup() {
       });
       console.log("Signup successful! User ID:", userId);
 
-      const result = await login({
+      const signInResult = await signIn("credentials", {
+        redirect: false,
         email: values.email,
         password: values.password,
       });
-      console.log("User logged in successfully after signup.", result);
 
-      authStore.login({ ...result, role: result.role as "job-seeker" | "recruiter" });
+      if (signInResult?.error) {
+        throw new Error(signInResult.error);
+      }
+
+      // After successful signIn, the session will be available globally
+      // We can proceed with profile creation using the userId from signup.
+      const authenticatedUserId = userId.userId;
 
       const profileId = await createProfile({
-        userId: result?.userId,
+        userId: authenticatedUserId,
         companyName: values.companyName,
         companySize: values.companySize,
         industry: values.industry,
@@ -217,7 +221,7 @@ export default function RecruiterSignup() {
                       <FormItem>
                         <FormLabel>Company Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Acme Inc." {...field} />
+                          <Input placeholder="Acme Corp" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -241,7 +245,7 @@ export default function RecruiterSignup() {
                             <SelectItem value="51-200">51-200 employees</SelectItem>
                             <SelectItem value="201-500">201-500 employees</SelectItem>
                             <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                            <SelectItem value="1001+">1001+ employees</SelectItem>
+                            <SelectItem value="1000+">1000+ employees</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -262,12 +266,11 @@ export default function RecruiterSignup() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="technology">Technology</SelectItem>
-                            <SelectItem value="finance">Finance</SelectItem>
                             <SelectItem value="healthcare">Healthcare</SelectItem>
+                            <SelectItem value="finance">Finance</SelectItem>
                             <SelectItem value="education">Education</SelectItem>
-                            <SelectItem value="retail">Retail</SelectItem>
                             <SelectItem value="manufacturing">Manufacturing</SelectItem>
-                            <SelectItem value="consulting">Consulting</SelectItem>
+                            <SelectItem value="retail">Retail</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -288,8 +291,8 @@ export default function RecruiterSignup() {
                         <FormLabel>Company Description</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Brief description of your company, culture, and values"
-                            className="min-h-32"
+                            placeholder="Tell us about your company, its mission, and culture."
+                            rows={5}
                             {...field}
                           />
                         </FormControl>
@@ -297,82 +300,67 @@ export default function RecruiterSignup() {
                       </FormItem>
                     )}
                   />
-
-
-                  <div className="space-y-2">
-                    <FormField
-                      control={form.control}
-                      name="companyValues"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Company Culture & Values</FormLabel>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Select the values that best represent your company culture. This helps match you with candidates who will thrive in your environment.
-                          </p>
-
+                  <FormField
+                    control={form.control}
+                    name="companyValues"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Company Values (Select all that apply)</FormLabel>
+                        <FormControl>
                           <div className="grid grid-cols-2 gap-2">
                             {[
-                              { value: "innovation", label: "Innovation", description: "Creative problem-solving" },
-                              { value: "teamwork", label: "Teamwork", description: "Collaborative approach" },
-                              { value: "excellence", label: "Excellence", description: "High standards" },
-                              { value: "autonomy", label: "Autonomy", description: "Self-directed work" },
-                              { value: "workLifeBalance", label: "Work-Life Balance", description: "Flexible scheduling" },
-                              { value: "growthMindset", label: "Growth Mindset", description: "Continuous learning" },
+                              "Innovation", "Collaboration", "Integrity", "Customer-Centric",
+                              "Employee Growth", "Diversity & Inclusion", "Sustainability", "Results-Oriented"
                             ].map((value) => (
                               <Button
-                                key={value.value}
+                                key={value}
                                 type="button"
-                                variant={field.value.includes(value.value) ? "default" : "outline"}
-                                className="justify-start h-auto py-2"
+                                variant={field.value.includes(value) ? "default" : "outline"}
                                 onClick={() => {
-                                  const newValues = field.value.includes(value.value)
-                                    ? field.value.filter((v) => v !== value.value)
-                                    : [...field.value, value.value];
-                                  field.onChange(newValues);
+                                  if (field.value.includes(value)) {
+                                    field.onChange(field.value.filter((val) => val !== value));
+                                  } else {
+                                    field.onChange([...field.value, value]);
+                                  }
                                 }}
+                                className="justify-start"
                               >
-                                <span className="flex flex-col items-start">
-                                  <span className="font-medium">{value.label}</span>
-                                  <span className="text-xs text-muted-foreground">{value.description}</span>
-                                </span>
+                                {value}
                               </Button>
                             ))}
                           </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               )}
 
-              <div className="flex justify-between pt-2">
-                {step > 1 ? (
-                  <Button type="button" variant="outline" onClick={handlePrevious}>
+              <div className="flex justify-between mt-6">
+                {step > 1 && (
+                  <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading}>
                     Previous
                   </Button>
+                )}
+                {step < 3 ? (
+                  <Button type="button" onClick={handleNext} disabled={isLoading}>
+                    Next {isLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                  </Button>
                 ) : (
-                  <Button type="button" variant="ghost" asChild>
-                    <Link href="/">Cancel</Link>
+                  <Button type="button" onClick={handleSubmit} disabled={isLoading || !form.formState.isValid}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Sign Up
                   </Button>
                 )}
-                <Button
-                  type="button"
-                  onClick={step < 3 ? handleNext : handleSubmit}
-                  disabled={isLoading}
-                >
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {step < 3 ? "Next" : "Create Account"}
-                </Button>
               </div>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex justify-center border-t pt-6">
+        <CardFooter className="flex flex-col items-center gap-4 border-t pt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary font-medium">
+            <Link href="/login" className="text-primary font-medium hover:underline">
               Log in
             </Link>
           </p>

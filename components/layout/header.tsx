@@ -7,17 +7,16 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { UserCircle, BriefcaseBusiness, LogIn, Sparkles, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useRef, useEffect } from 'react';
-import { useAuthStore } from '@/store/authStore';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import { ScrollProgress } from "../magicui/scroll-progress";
+import { useSession, signOut } from "next-auth/react";
 
 interface NavItemsProps {
   isLoggedIn: boolean;
-  user: any;
+  user: any; // This will now be the session.user object
   recruiterProfile: any;
 }
 
@@ -67,7 +66,7 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile 
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => { useAuthStore.getState().logout(); }}>
+          <DropdownMenuItem onClick={() => { signOut(); }}>
             <LogIn className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>
@@ -108,15 +107,15 @@ const NavItems: React.FC<NavItemsProps> = ({ isLoggedIn, user, recruiterProfile 
 
 const Header = () => {
   const pathname = usePathname();
-  const { isLoggedIn, user } = useAuthStore();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   const recruiterProfile = useQuery(
     api.profiles.getRecruiterProfile,
-    user?.role === 'recruiter' && user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.role === 'recruiter' && session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
-  console.log(user);
+  console.log(session?.user);
   
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background p-3">
@@ -170,8 +169,8 @@ const Header = () => {
             Terms
           </Link>
           <NavItems 
-            isLoggedIn={isLoggedIn} 
-            user={user} 
+            isLoggedIn={status === 'authenticated'} 
+            user={session?.user} 
             recruiterProfile={recruiterProfile} 
           />
           <ModeToggle />
@@ -180,8 +179,8 @@ const Header = () => {
         {/* Mobile Navigation - directly show avatar/buttons */}
         <div className="md:hidden flex items-center gap-2">
           <NavItems 
-            isLoggedIn={isLoggedIn} 
-            user={user} 
+            isLoggedIn={status === 'authenticated'} 
+            user={session?.user} 
             recruiterProfile={recruiterProfile} 
           />
           <ModeToggle />

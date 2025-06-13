@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useAuthStore } from "@/store/authStore";
+import { useSession } from "next-auth/react";
 import { Id } from "@/convex/_generated/dataModel";
 
 
@@ -48,7 +48,7 @@ interface JobPostFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   job?: { // Optional job prop for editing
-    _id: Id<"jobPosts">; // Include _id for updates
+    _id: Id<"jobPosts">;
     title: string;
     company: string;
     location: string;
@@ -60,11 +60,11 @@ interface JobPostFormModalProps {
 }
 
 const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, job }) => {
-  const { user } = useAuthStore();
+  const { data: session } = useSession();
 
   const recruiterProfile = useQuery(
     api.profiles.getRecruiterProfile,
-    user?.role === 'recruiter' && user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.role === 'recruiter' && session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
   const [isAddingSkill, setIsAddingSkill] = useState(false);
   const [skillInput, setSkillInput] = useState('');
@@ -127,7 +127,7 @@ const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, jo
         jobId = job._id;
         await updateJobPost({
           jobPostId: job._id,
-          userId: user?.userId as Id<"users">,
+          userId: session?.user?.id as Id<"users">,
           ...values,
           salary: values.salary || '',
         });
@@ -136,7 +136,7 @@ const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, jo
         jobId = await createJobPost({ 
           ...values, 
           salary: values.salary || '', 
-          userId: user?.userId as Id<"users"> 
+          userId: session?.user?.id as Id<"users"> 
         });
         toast.success("Job post created successfully!");
       }
@@ -215,7 +215,7 @@ const JobPostFormModal: React.FC<JobPostFormModalProps> = ({ isOpen, onClose, jo
                   <FormLabel>Company Name</FormLabel>
                   <FormControl>
                     {/* company name is defaulted and read-only for recruiters */}
-                    <Input placeholder="Acme Corp" {...field} readOnly={user?.role === 'recruiter'} />
+                    <Input placeholder="Acme Corp" {...field} readOnly={session?.user?.role === 'recruiter'} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
