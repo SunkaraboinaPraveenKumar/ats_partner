@@ -7,10 +7,9 @@ import { cn } from '@/lib/utils';
 import Provider from './provider';
 import { Toaster } from 'sonner';
 import FooterWrapper from '@/components/layout/FooterWrapper';
+import AuthProvider from './auth-provider';
 
 const inter = Inter({ subsets: ['latin'] });
-
-
 
 export const metadata: Metadata = {
   title: 'SwipeIt - AI-Powered Recruitment',
@@ -28,22 +27,24 @@ export default function RootLayout({
         "min-h-screen bg-background font-sans antialiased",
         inter.className
       )}>
-        <Provider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              
-              <main className="flex-1">{children}</main>
-              <FooterWrapper />
-            </div>
-            <Toaster />
-          </ThemeProvider>
-        </Provider>
+        <AuthProvider>
+          <Provider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                
+                <main className="flex-1">{children}</main>
+                <FooterWrapper />
+              </div>
+              <Toaster />
+            </ThemeProvider>
+          </Provider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -11,32 +11,30 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import CreateJobPostModal from "@/components/dashboard/create-job-post-modal";
 import { toast } from "sonner";
-import { useAuthStore } from "@/store/authStore";
 import { Id } from "@/convex/_generated/dataModel";
 import { BlurFade } from "@/components/magicui/blur-fade";
 import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react";
 
 export default function RecruiterDashboard() {
   const [isLoading, setIsLoading] = useState(false); // Example loading state for actions
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { user, isLoggedIn } = useAuthStore();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      router.push('/login');
-    } else if (user === null) {
+    if (status === 'unauthenticated') {
       router.push('/login');
     }
-  }, [isLoggedIn, user, router]);
+  }, [status, router]);
 
   const jobPostings = useQuery(
     api.jobs.getRecruiterJobs,
-    user?.userId ? { userId: user.userId as Id<"users"> } : "skip"
+    session?.user?.id ? { userId: session.user.id as Id<"users"> } : "skip"
   );
 
   const handleNewJobPost = () => {
-    if (!user) {
+    if (status === 'unauthenticated' || !session?.user?.id) {
       // Should not happen if routed correctly, but defensive check
       toast.error("User not logged in to create job post.");
       return;
@@ -47,6 +45,21 @@ export default function RecruiterDashboard() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
   };
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user?.role !== 'recruiter') {
+    return <div className="py-8 text-center">Access Denied: Only recruiters can view this page.</div>;
+  }
 
   return (
     <div className=" py-8">
@@ -79,7 +92,7 @@ export default function RecruiterDashboard() {
           // Display job postings
           <div className="grid gap-4">
             {jobPostings.map((job) => (
-              <BlurFade key={job._id} delay={0.1} duration={0.8} inView={true}>
+              <BlurFade key={job._id} delay={0.2} duration={0.4} inView={true}>
                 <JobPostingCard  job={job} />
               </BlurFade>
             ))}

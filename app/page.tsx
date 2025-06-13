@@ -5,11 +5,11 @@ import { ArrowRight, CheckCircle, BriefcaseBusiness, UserCircle, Bot } from "luc
 import HeroAnimation from "@/components/home/hero-animation";
 import AIRecruitmentFlow from "@/components/home/ai-recruitment";
 import { BorderBeam } from "@/components/magicui/border-beam";
-import { useAuthStore } from "@/store/authStore";
 import { BlurFade } from "@/components/magicui/blur-fade";
+import { useSession } from "next-auth/react";
 
 export default function Home() {
-  const { isLoggedIn, user } = useAuthStore();
+  const { data: session, status } = useSession();
 
   const features = [
     {
@@ -67,6 +67,9 @@ export default function Home() {
     },
   ];
 
+  const isLoggedIn = status === 'authenticated';
+  const userRole = session?.user?.role;
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
       {/* Hero Section */}
@@ -84,13 +87,13 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                  <Link href={isLoggedIn && user?.role === 'job-seeker' ? "/dashboard/job-seeker" : "/signup/job-seeker"}>
+                  <Link href={isLoggedIn && userRole === 'job-seeker' ? "/dashboard/job-seeker" : "/signup/job-seeker"}>
                     <Button size="lg" className="gap-1">
                       <UserCircle className="h-5 w-5" />
                       For Job Seekers
                     </Button>
                   </Link>
-                  <Link href={isLoggedIn && user?.role === 'recruiter' ? "/dashboard/recruiter" : "/signup/recruiter"}>
+                  <Link href={isLoggedIn && userRole === 'recruiter' ? "/dashboard/recruiter" : "/signup/recruiter"}>
                     <Button size="lg" variant="outline" className="gap-1">
                       <BriefcaseBusiness className="h-5 w-5" />
                       For Recruiters
@@ -180,7 +183,7 @@ export default function Home() {
                 </p>
               </div>
               <div className="flex flex-col gap-2 min-[400px]:flex-row">
-                <Link href={isLoggedIn ? (user?.role === 'recruiter' ? "/dashboard/recruiter" : "/dashboard/job-seeker") : "/signup/job-seeker"}>
+                <Link href={isLoggedIn ? (userRole === 'recruiter' ? "/dashboard/recruiter" : "/dashboard/job-seeker") : "/signup/job-seeker"}>
                   <Button size="lg" className="gap-1">
                     Get Started <ArrowRight className="h-5 w-5 ml-1" />
                   </Button>

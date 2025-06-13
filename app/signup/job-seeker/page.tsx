@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +29,7 @@ import { useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
+import { ConvexError } from "convex/values";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -73,11 +74,8 @@ export default function JobSeekerSignup() {
 
   const signup = useMutation(api.auth.signup);
   const createProfile = useMutation(api.profiles.createJobSeekerProfile);
-  const login = useMutation(api.auth.login);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const router = useRouter();
-  const {user, isLoggedIn} = useAuthStore();
-  const authStore = useAuthStore();
   const ingestResume = useAction(api.action.ingest);
 
   const handleNext = async () => {
@@ -128,30 +126,44 @@ export default function JobSeekerSignup() {
         console.log("Attempting signup and profile creation with:", form.getValues(), resumeFile);
         setIsLoading(true);
         try {
-          const userId = await signup({
-            name: form.getValues().name,
-            email: form.getValues().email,
-            password: form.getValues().password,
-            role: "job-seeker",
-          });
-          console.log("Signup successful! User ID:", userId);
+          let createdUserId: Id<"users"> | null = null;
 
-          const result = await login({
-            email: form.getValues().email,
-            password: form.getValues().password,
-          });
-          console.log("User logged in successfully after signup.", result);
+          try {
+            // Attempt to sign up the user
+            const { userId: newUserId } = await signup({
+              name: form.getValues().name,
+              email: form.getValues().email,
+              password: form.getValues().password,
+              role: "job-seeker",
+            });
+            createdUserId = newUserId;
+            console.log("Signup successful! User ID:", createdUserId);
+          } catch (error) {
+            if (error instanceof ConvexError && error.message === "Email already registered") {
+              console.warn("Email already registered, attempting to log in with NextAuth.");
+              const signInResult = await signIn("credentials", {
+                redirect: false,
+                email: form.getValues().email,
+                password: form.getValues().password,
+              });
 
-          authStore.login({
-              ...result,
-              role: result.role as "job-seeker" | "recruiter"
-           });
+              if (signInResult?.error) {
+                throw new Error(signInResult.error);
+              }
 
-          if (!result?.userId) {
-              throw new Error("User not authenticated as job seeker after login.");
+              // If sign-in is successful for an existing user, redirect them to dashboard
+              toast.info("You already have an account. Logging in and redirecting to dashboard.");
+              router.push("/dashboard/job-seeker");
+              setIsLoading(false);
+              return; // Stop further execution
+            } else {
+              throw error; // Re-throw other errors
+            }
           }
           
-          const authenticatedUserId = result?.userId;
+          if (!createdUserId) {
+              throw new Error("User ID was not returned from signup.");
+          }
 
           let storageId: Id<"_storage"> | undefined;
           if (resumeFile) {
@@ -184,7 +196,7 @@ export default function JobSeekerSignup() {
           const attitudeQuizResults = attitudeResults;
 
           const profileId = await createProfile({
-            userId: authenticatedUserId,
+            userId: createdUserId as Id<"users">,
             storageId: storageId,
             title: form.getValues().title,
             summary: form.getValues().summary,
@@ -205,7 +217,7 @@ export default function JobSeekerSignup() {
           const splitText = docs.map(doc => doc.pageContent);
           await ingestResume({
             splitText,
-            userId: authenticatedUserId,
+            userId: createdUserId as Id<"users">,
           });
 
           toast.success("Account and profile created successfully!");
@@ -224,7 +236,7 @@ export default function JobSeekerSignup() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      const maxSize = 5 * 1024 * 1024;
+      const maxSize = 5 * 1024 * 1024; // 5MB
       const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
       if (file.size > maxSize) {

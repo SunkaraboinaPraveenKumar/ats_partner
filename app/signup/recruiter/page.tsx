@@ -8,7 +8,7 @@ import Link from "next/link";
 import { Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+import { signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { ConvexError } from "convex/values";
+import { Id } from "@/convex/_generated/dataModel";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -76,9 +78,7 @@ export default function RecruiterSignup() {
 
   const signup = useMutation(api.auth.signup);
   const createProfile = useMutation(api.profiles.createRecruiterProfile);
-  const login = useMutation(api.auth.login);
   const router = useRouter();
-  const authStore = useAuthStore();
 
   const handleNext = async () => {
     let isValid = false;
@@ -108,24 +108,45 @@ export default function RecruiterSignup() {
     setIsLoading(true);
 
     try {
-      const userId = await signup({
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        role: "recruiter",
-      });
-      console.log("Signup successful! User ID:", userId);
+      let createdUserId: Id<"users">;
 
-      const result = await login({
-        email: values.email,
-        password: values.password,
-      });
-      console.log("User logged in successfully after signup.", result);
+      try {
+        const { userId: newUserId } = await signup({
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          role: "recruiter",
+        });
+        createdUserId = newUserId;
+        console.log("Signup successful! User ID:", createdUserId);
+      } catch (error) {
+        if (error instanceof ConvexError && error.message === "Email already registered") {
+          console.warn("Email already registered, attempting to log in with NextAuth.");
+          const signInResult = await signIn("credentials", {
+            redirect: false,
+            email: values.email,
+            password: values.password,
+          });
 
-      authStore.login({ ...result, role: result.role as "job-seeker" | "recruiter" });
+          if (signInResult?.error) {
+            throw new Error(signInResult.error);
+          }
+
+          toast.info("You already have an account. Logging in and redirecting to dashboard.");
+          router.push("/dashboard/recruiter");
+          setIsLoading(false);
+          return; // Stop further execution
+        } else {
+          throw error; // Re-throw other errors
+        }
+      }
+
+      if (!createdUserId) {
+          throw new Error("User ID was not returned from signup.");
+      }
 
       const profileId = await createProfile({
-        userId: result?.userId,
+        userId: createdUserId as Id<"users">,
         companyName: values.companyName,
         companySize: values.companySize,
         industry: values.industry,
@@ -297,7 +318,6 @@ export default function RecruiterSignup() {
                       </FormItem>
                     )}
                   />
-
 
                   <div className="space-y-2">
                     <FormField

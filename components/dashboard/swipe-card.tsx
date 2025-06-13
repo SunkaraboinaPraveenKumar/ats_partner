@@ -1,36 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { motion, PanInfo } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee, MessageSquare, ExternalLink } from "lucide-react";
+import { Building2, MapPin, DollarSign, Briefcase, GraduationCap, Clock, IndianRupee, MessageSquare, ExternalLink, CheckCircle } from "lucide-react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useAuthStore } from "@/store/authStore";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Id } from '@/convex/_generated/dataModel';
+import { Id, Doc } from '@/convex/_generated/dataModel';
 import { useRouter } from 'next/navigation';
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface SwipeCardProps {
   type: "job" | "candidate";
-  data: any;
+  data: Doc<"jobPosts"> | Doc<"jobSeekerProfiles">;
   onSwipe: (direction: "left" | "right", type: "job" | "candidate") => void;
   blindMode?: boolean;
+  userId: Id<"users">;
+  isApplied: boolean;
+  userProfile?: Doc<"jobSeekerProfiles">;
 }
 
-const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = false }) => {
+const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = false, userId, isApplied, userProfile }) => {
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
   const [exitX, setExitX] = useState(0);
   
-  const { user } = useAuthStore();
   const createApplication = useMutation(api.applications.createApplication);
-  const application = useQuery(api.applications.getApplicationByUserAndJob, {
-    userId: user?.userId as Id<"users">,
-    jobPostId: data._id,
-  });
+  const application = useQuery(
+    api.applications.getApplicationByUserAndJob,
+    type === "job" && userId && data ? { userId: userId as Id<"users">, jobPostId: data._id as Id<"jobPosts"> } : "skip"
+  );
   
   const router = useRouter();
   
@@ -52,15 +54,15 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
   };
   
   const handleApply = async () => {
-    if (!user?.userId) {
-      toast.error("Please log in to apply");
+    if (!userId || type !== "job") {
+      toast.error("Please log in to apply for jobs");
       return;
     }
 
     try {
       await createApplication({
-        userId: user.userId as Id<"users">,
-        jobPostId: data._id,
+        userId: userId as Id<"users">,
+        jobPostId: data._id as Id<"jobPosts">,
       });
       toast.success("Application submitted successfully!");
     } catch (error: any) {
@@ -73,12 +75,12 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
   };
   
   const handleChat = async () => {
-    if (!application?._id || !user?.userId) return;
+    if (!userId || !application?._id || type !== "job") return;
     
     try {
       const match = await getOrCreateMatch({
-        jobPostId: data._id,
-        userId: user.userId as Id<"users">
+        jobPostId: data._id as Id<"jobPosts">,
+        userId: userId as Id<"users">
       });
       
       const matchId = typeof match === 'string' ? match : match._id;
@@ -106,9 +108,9 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
       <Card className="w-full h-[500px] overflow-hidden">
         <div 
           className={`absolute inset-x-0 top-0 h-32 bg-gradient-to-b ${
-            data.matchPercentage >= 90 
+            (data as any).matchPercentage >= 90 
               ? 'from-green-500/20 to-transparent' 
-              : data.matchPercentage >= 80 
+              : (data as any).matchPercentage >= 80 
                 ? 'from-amber-500/20 to-transparent' 
                 : 'from-blue-500/20 to-transparent'
           }`}
@@ -120,40 +122,40 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               {type === "job" ? (
                 <>
                   <h2 className="text-xl font-bold flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{data.title}</span>
+                    <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{(data as Doc<"jobPosts">).title}</span>
                     <Link href={`/dashboard/job-seeker/jobs/${data._id}`} className="text-primary hover:text-primary/80 flex-shrink-0">
                       <ExternalLink className="h-5 w-5" />
                     </Link>
                   </h2>
                   <div className="flex items-center text-muted-foreground">
                     <Building2 className="h-4 w-4 mr-1" />
-                    <span>{data.company}</span>
+                    <span>{(data as Doc<"jobPosts">).company}</span>
                   </div>
                 </>
               ) : (
                 <>
                   {blindMode ? (
-                    <h2 className="text-xl font-bold">Candidate #{data.id}</h2>
+                    <h2 className="text-xl font-bold">Candidate #{data._id}</h2>
                   ) : (
-                    <h2 className="text-xl font-bold">{data.name}</h2>
+                    <h2 className="text-xl font-bold">{(data as Doc<"jobSeekerProfiles">).title}</h2>
                   )}
                   <div className="flex items-center text-muted-foreground">
                     <Briefcase className="h-4 w-4 mr-1" />
-                    <span>{data.title}</span>
+                    <span>{(data as Doc<"jobSeekerProfiles">).title}</span>
                   </div>
                 </>
               )}
             </div>
             {type === "job" && (
               <Badge variant="outline" className={`text-lg font-bold flex-shrink-0 ${
-                (application && application.matchRatio >= 0.9) || (!application && data.matchPercentage >= 90) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
-                (application && application.matchRatio >= 0.8) || (!application && data.matchPercentage >= 80) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
+                (application && application.matchRatio >= 0.9) || (!application && (data as any).matchPercentage >= 90) ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 
+                (application && application.matchRatio >= 0.8) || (!application && (data as any).matchPercentage >= 80) ? 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300' : 
                 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
               }`}>
                 {application
-                  ? Math.round(application.matchRatio * 100)
-                  : typeof data.matchPercentage === 'number'
-                    ? data.matchPercentage
+                  ? Math.round((application.matchRatio || 0) * 100)
+                  : typeof (data as any).matchPercentage === 'number'
+                    ? (data as any).matchPercentage
                     : '--'}%
               </Badge>
             )}
@@ -163,18 +165,18 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
             <div className="space-y-4 mb-4">
               <div className="flex items-center text-sm">
                 <MapPin className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{data.location}</span>
+                <span>{(data as Doc<"jobPosts">).location}</span>
               </div>
               
               <div className="flex items-center text-sm">
                 <IndianRupee className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{data.salary}</span>
+                <span>{(data as Doc<"jobPosts">).salary}</span>
               </div>
               
               <div>
                 <h3 className="text-sm font-medium mb-2">Required Skills</h3>
                 <div className="flex flex-wrap gap-2">
-                  {data.skills.map((skill: string, index: number) => (
+                  {(data as Doc<"jobPosts">).requiredSkills.map((skill: string, index: number) => (
                     <Badge key={index} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>
@@ -184,29 +186,29 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               
               <div>
                 <h3 className="text-sm font-medium mb-1">Description</h3>
-                <p className="text-sm text-muted-foreground line-clamp-3">{data.description}</p>
+                <p className="text-sm text-muted-foreground line-clamp-3">{(data as Doc<"jobPosts">).description}</p>
               </div>
             </div>
           ) : (
             <div className="space-y-4 mb-4">
-              {!blindMode && (
+              {/* {!blindMode && (
                 <div className="flex items-center text-sm">
                   <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{data.experience} of experience</span>
+                  <span>{(data as Doc<"jobSeekerProfiles">).yearsOfExperience} of experience</span>
                 </div>
-              )}
+              )} */}
               
-              {!blindMode && (
+              {/* {!blindMode && (
                 <div className="flex items-center text-sm">
                   <GraduationCap className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{data.education}</span>
+                  <span>{(data as Doc<"jobSeekerProfiles">).education?.degree}</span>
                 </div>
-              )}
+              )} */}
               
               <div>
                 <h3 className="text-sm font-medium mb-2">Skills</h3>
                 <div className="flex flex-wrap gap-2">
-                  {data.skills.map((skill: string, index: number) => (
+                  {(data as Doc<"jobSeekerProfiles">).extractedSkills.map((skill: string, index: number) => (
                     <Badge key={index} variant="secondary" className="text-xs">
                       {skill}
                     </Badge>
@@ -216,15 +218,15 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
               
               <div>
                 <h3 className="text-sm font-medium mb-1">Summary</h3>
-                <p className="text-sm text-muted-foreground line-clamp-4">{data.summary}</p>
+                <p className="text-sm text-muted-foreground line-clamp-4">{(data as Doc<"jobSeekerProfiles">).summary}</p>
               </div>
             </div>
           )}
           
           <div className="mt-auto">
             <div className="flex gap-2">
-              {application ? (
-                <Link href={`/dashboard/job-seeker/applications/${application._id}`} className="flex-1">
+              {isApplied ? (
+                <Link href={`/dashboard/job-seeker/applications/${application?._id}`} className="flex-1">
                   <Button variant="outline" className="w-full">
                     Already Applied
                     <ExternalLink className="ml-2 h-4 w-4" />
@@ -240,7 +242,7 @@ const SwipeCard: React.FC<SwipeCardProps> = ({ type, data, onSwipe, blindMode = 
                 </Button>
               )}
               
-              {application && !isNaN(application.matchRatio) && (
+              {application && !isNaN(application.matchRatio || 0) && (
                 <Button
                   onClick={handleChat}
                   variant="outline"
