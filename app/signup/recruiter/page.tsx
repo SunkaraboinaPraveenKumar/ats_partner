@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { ConvexError } from "convex/values";
+import { Id } from "@/convex/_generated/dataModel";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -106,30 +108,45 @@ export default function RecruiterSignup() {
     setIsLoading(true);
 
     try {
-      const userId = await signup({
-        name: values.name,
-        email: values.email,
-        password: values.password,
-        role: "recruiter",
-      });
-      console.log("Signup successful! User ID:", userId);
+      let createdUserId: Id<"users">;
 
-      const signInResult = await signIn("credentials", {
-        redirect: false,
-        email: values.email,
-        password: values.password,
-      });
+      try {
+        const { userId: newUserId } = await signup({
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          role: "recruiter",
+        });
+        createdUserId = newUserId;
+        console.log("Signup successful! User ID:", createdUserId);
+      } catch (error) {
+        if (error instanceof ConvexError && error.message === "Email already registered") {
+          console.warn("Email already registered, attempting to log in with NextAuth.");
+          const signInResult = await signIn("credentials", {
+            redirect: false,
+            email: values.email,
+            password: values.password,
+          });
 
-      if (signInResult?.error) {
-        throw new Error(signInResult.error);
+          if (signInResult?.error) {
+            throw new Error(signInResult.error);
+          }
+
+          toast.info("You already have an account. Logging in and redirecting to dashboard.");
+          router.push("/dashboard/recruiter");
+          setIsLoading(false);
+          return; // Stop further execution
+        } else {
+          throw error; // Re-throw other errors
+        }
       }
 
-      // After successful signIn, the session will be available globally
-      // We can proceed with profile creation using the userId from signup.
-      const authenticatedUserId = userId.userId;
+      if (!createdUserId) {
+          throw new Error("User ID was not returned from signup.");
+      }
 
       const profileId = await createProfile({
-        userId: authenticatedUserId,
+        userId: createdUserId as Id<"users">,
         companyName: values.companyName,
         companySize: values.companySize,
         industry: values.industry,
@@ -221,7 +238,7 @@ export default function RecruiterSignup() {
                       <FormItem>
                         <FormLabel>Company Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Acme Corp" {...field} />
+                          <Input placeholder="Acme Inc." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -245,7 +262,7 @@ export default function RecruiterSignup() {
                             <SelectItem value="51-200">51-200 employees</SelectItem>
                             <SelectItem value="201-500">201-500 employees</SelectItem>
                             <SelectItem value="501-1000">501-1000 employees</SelectItem>
-                            <SelectItem value="1000+">1000+ employees</SelectItem>
+                            <SelectItem value="1001+">1001+ employees</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -266,11 +283,12 @@ export default function RecruiterSignup() {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="technology">Technology</SelectItem>
-                            <SelectItem value="healthcare">Healthcare</SelectItem>
                             <SelectItem value="finance">Finance</SelectItem>
+                            <SelectItem value="healthcare">Healthcare</SelectItem>
                             <SelectItem value="education">Education</SelectItem>
-                            <SelectItem value="manufacturing">Manufacturing</SelectItem>
                             <SelectItem value="retail">Retail</SelectItem>
+                            <SelectItem value="manufacturing">Manufacturing</SelectItem>
+                            <SelectItem value="consulting">Consulting</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
@@ -291,8 +309,8 @@ export default function RecruiterSignup() {
                         <FormLabel>Company Description</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Tell us about your company, its mission, and culture."
-                            rows={5}
+                            placeholder="Brief description of your company, culture, and values"
+                            className="min-h-32"
                             {...field}
                           />
                         </FormControl>
@@ -300,67 +318,81 @@ export default function RecruiterSignup() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="companyValues"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Company Values (Select all that apply)</FormLabel>
-                        <FormControl>
+
+                  <div className="space-y-2">
+                    <FormField
+                      control={form.control}
+                      name="companyValues"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company Culture & Values</FormLabel>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Select the values that best represent your company culture. This helps match you with candidates who will thrive in your environment.
+                          </p>
+
                           <div className="grid grid-cols-2 gap-2">
                             {[
-                              "Innovation", "Collaboration", "Integrity", "Customer-Centric",
-                              "Employee Growth", "Diversity & Inclusion", "Sustainability", "Results-Oriented"
+                              { value: "innovation", label: "Innovation", description: "Creative problem-solving" },
+                              { value: "teamwork", label: "Teamwork", description: "Collaborative approach" },
+                              { value: "excellence", label: "Excellence", description: "High standards" },
+                              { value: "autonomy", label: "Autonomy", description: "Self-directed work" },
+                              { value: "workLifeBalance", label: "Work-Life Balance", description: "Flexible scheduling" },
+                              { value: "growthMindset", label: "Growth Mindset", description: "Continuous learning" },
                             ].map((value) => (
                               <Button
-                                key={value}
+                                key={value.value}
                                 type="button"
-                                variant={field.value.includes(value) ? "default" : "outline"}
+                                variant={field.value.includes(value.value) ? "default" : "outline"}
+                                className="justify-start h-auto py-2"
                                 onClick={() => {
-                                  if (field.value.includes(value)) {
-                                    field.onChange(field.value.filter((val) => val !== value));
-                                  } else {
-                                    field.onChange([...field.value, value]);
-                                  }
+                                  const newValues = field.value.includes(value.value)
+                                    ? field.value.filter((v) => v !== value.value)
+                                    : [...field.value, value.value];
+                                  field.onChange(newValues);
                                 }}
-                                className="justify-start"
                               >
-                                {value}
+                                <span className="flex flex-col items-start">
+                                  <span className="font-medium">{value.label}</span>
+                                  <span className="text-xs text-muted-foreground">{value.description}</span>
+                                </span>
                               </Button>
                             ))}
                           </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                 </div>
               )}
 
-              <div className="flex justify-between mt-6">
-                {step > 1 && (
-                  <Button type="button" variant="outline" onClick={handlePrevious} disabled={isLoading}>
+              <div className="flex justify-between pt-2">
+                {step > 1 ? (
+                  <Button type="button" variant="outline" onClick={handlePrevious}>
                     Previous
                   </Button>
-                )}
-                {step < 3 ? (
-                  <Button type="button" onClick={handleNext} disabled={isLoading}>
-                    Next {isLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-                  </Button>
                 ) : (
-                  <Button type="button" onClick={handleSubmit} disabled={isLoading || !form.formState.isValid}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Sign Up
+                  <Button type="button" variant="ghost" asChild>
+                    <Link href="/">Cancel</Link>
                   </Button>
                 )}
+                <Button
+                  type="button"
+                  onClick={step < 3 ? handleNext : handleSubmit}
+                  disabled={isLoading}
+                >
+                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {step < 3 ? "Next" : "Create Account"}
+                </Button>
               </div>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col items-center gap-4 border-t pt-6">
+        <CardFooter className="flex justify-center border-t pt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-primary font-medium hover:underline">
+            <Link href="/login" className="text-primary font-medium">
               Log in
             </Link>
           </p>
