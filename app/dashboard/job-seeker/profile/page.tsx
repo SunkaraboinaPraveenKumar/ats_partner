@@ -118,6 +118,18 @@ function JobSeekerProfilePage() {
     }
   };
 
+  // Helper function to determine badge variant based on application status
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return "success";
+      case "rejected":
+        return "destructive";
+      default:
+        return "secondary"; // For "Pending", "Under Review", "Interviewing", etc.
+    }
+  };
+
   // Show loading state
   if (jobSeekerProfile === undefined) {
     return <div className=" py-8 text-center">Loading profile...</div>;
@@ -281,9 +293,9 @@ function JobSeekerProfilePage() {
                 <div className="space-y-4">
                   {applications.map((app) => (
                     <Card key={app._id} className="p-4 flex justify-between items-start">
-                      <div>
-                        <p className="font-semibold">{app.jobPost?.title} at {app.jobPost?.company}</p>
-                        <p className="text-sm text-muted-foreground">Status: {app.status}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="font-semibold text-lg">{app.jobPost?.title} at {app.jobPost?.company}</p>
+                        <div className="text-sm text-muted-foreground">Status: <Badge variant={getStatusBadgeVariant(app.status)}>{app.status}</Badge></div>
                         <div className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-4 w-4" /> Applied on: {new Date(app._creationTime).toLocaleDateString()}</div>
                       </div>
                       <Link href={`/dashboard/job-seeker/applications/${app._id}`} passHref>
