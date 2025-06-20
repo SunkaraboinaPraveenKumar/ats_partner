@@ -17,6 +17,7 @@ import type * as action from "../action.js";
 import type * as applications from "../applications.js";
 import type * as auth from "../auth.js";
 import type * as files from "../files.js";
+import type * as interviews from "../interviews.js";
 import type * as jobPosts from "../jobPosts.js";
 import type * as jobs from "../jobs.js";
 import type * as langchain_db from "../langchain/db.js";
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   applications: typeof applications;
   auth: typeof auth;
   files: typeof files;
+  interviews: typeof interviews;
   jobPosts: typeof jobPosts;
   jobs: typeof jobs;
   "langchain/db": typeof langchain_db;

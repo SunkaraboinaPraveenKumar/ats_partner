@@ -101,4 +101,26 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_jobPostId", ["jobPostId"])
     .index("by_userId_and_jobPostId", ["userId", "jobPostId"]),
+
+  // Interview sessions linked to applications
+  interviews: defineTable({
+    applicationId: v.id("applications"),
+    jobSeekerId: v.id("users"),
+    questions: v.array(v.object({
+      question: v.string(),
+      type: v.string(),
+    })),
+    answers: v.array(v.object({
+      audioUrl: v.string(),
+      transcript: v.string(),
+      questionIndex: v.number(),
+    })),
+    conversation: v.array(v.object({
+      role: v.string(),
+      content: v.string(),
+    })), // full transcript as array of message objects
+    feedback: v.optional(v.any()), // JSON feedback
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_applicationId", ["applicationId"]),
 });

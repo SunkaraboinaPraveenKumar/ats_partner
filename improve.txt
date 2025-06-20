@@ -1,4 +1,1 @@
-Auth
-better or next Auth
-
 AI Interview APP(Integrate)
