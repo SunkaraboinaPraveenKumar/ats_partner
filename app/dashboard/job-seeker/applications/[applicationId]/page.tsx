@@ -57,10 +57,12 @@ export default function ApplicationDetailPage() {
       <BlurFade delay={0.1} duration={0.5} inView={true}>
         <Card className="p-6 shadow-lg rounded-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl font-bold mb-2">
-              <FileText className="h-6 w-6 text-primary" /> Application for {jobPost.title}
-              <Badge className={`ml-auto capitalize ${applicationStatus === "accepted" ? "bg-green-500 text-white" : applicationStatus === "rejected" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}>{applicationStatus}</Badge>
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <CardTitle className="flex items-center gap-2 text-2xl font-bold">
+                <FileText className="h-6 w-6 text-primary" /> Application for {jobPost.title}
+              </CardTitle>
+              <Badge className={`capitalize ${applicationStatus === "accepted" ? "bg-green-500 text-white" : applicationStatus === "rejected" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-800"}`}>{applicationStatus}</Badge>
+            </div>
             <CardDescription className="flex items-center gap-2 text-md text-gray-700 dark:text-gray-300">
               <User className="h-4 w-4 text-primary" /> Applied by {jobSeeker.name}
               <Calendar className="h-4 w-4 text-primary ml-4" /> on {new Date(application._creationTime).toLocaleDateString()}
@@ -69,9 +71,17 @@ export default function ApplicationDetailPage() {
           <CardContent className="space-y-8">
             <BlurFade delay={0.2} duration={0.5} inView={true}>
               <div className="p-4 rounded-lg shadow-md border">
-                <h3 className="text-xl font-semibold mb-3 flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-primary" /> Job Post Details
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xl font-semibold flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-primary" /> Job Post Details
+                  </h3>
+                  <Link
+                    href={`/dashboard/job-seeker/applications/${applicationId}/interview`}
+                    className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark transition ml-4"
+                  >
+                    Start Interview
+                  </Link>
+                </div>
                 <div className="space-y-2 text-gray-700 dark:text-gray-300">
                   <p className="flex items-center gap-2"><strong>Company:</strong> {jobPost.company}</p>
                   <p className="flex items-center gap-2"><strong>Location:</strong> <MapPin className="h-4 w-4 text-primary" /> {jobPost.location}</p>
