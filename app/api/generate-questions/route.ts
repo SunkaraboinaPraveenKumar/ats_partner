@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       messages: [
         { role: "system", content: prompt }
       ],
-      model: "llama-3.1-8b-instant", // or your preferred model
+      model: "llama-3.3-70b-versatile",
       stream: false,
     });
 
@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ interviewQuestions: questions.interviewQuestions });
   } catch (error) {
+    console.log(error);
     return NextResponse.json({ error: "Failed to generate questions" }, { status: 500 });
   }
 }
