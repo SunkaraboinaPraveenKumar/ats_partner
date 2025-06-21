@@ -209,7 +209,7 @@ export default function InterviewDetailPage() {
       const vapiCallId = vapi.getCall()?.id;
       if (vapiCallId && interviewId) {
         try {
-          await saveVapiCall({ interviewId, vapiCallId });
+          await saveVapiCall({ interviewId, vapiCallId })
         } catch (error) {
           console.error("Failed to save Vapi call ID:", error);
         }
