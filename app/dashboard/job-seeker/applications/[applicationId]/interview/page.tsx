@@ -72,6 +72,7 @@ export default function InterviewPage() {
       headers: { "Content-Type": "application/json" },
     });
     const data = await res.json();
+    console.log(data);
     const newQuestions = data.interviewQuestions || [];
     if (!application) return;
     const id = await createInterview({
@@ -88,6 +89,23 @@ export default function InterviewPage() {
   function goToInterview(interview: any) {
     router.push(`/dashboard/job-seeker/applications/${applicationId}/interview/${interview._id}`);
   }
+
+  // Select an existing interview to view or continue
+  function selectInterview(interview: any) {
+    setSelectedInterview(interview);
+    setQuestions(interview.questions);
+    setInterviewId(interview._id);
+    setIsInterviewStarted(false);
+    setIsInterviewFinished(!!interview.feedback);
+    setFeedback(interview.feedback || null);
+    setConversation(interview.conversation || "");
+    setSeconds(0);
+  }
+
+  useEffect(() => {
+    return () => clearInterval(timerRef.current);
+  }, []);
+
   // --- UI ---
   if (!application || !jobSeekerProfile) {
     return (
