@@ -47,7 +47,6 @@ export default function InterviewDetailPage() {
   // Convex mutations
   const finalizeInterviewWithFeedback = useMutation(api.interviews.finalizeInterviewWithFeedback);
   const updateInterviewConversation = useMutation(api.interviews.updateInterviewConversation);
-  const saveVapiCall = useMutation(api.audio.saveVapiCall);
 
   // Log interview whenever it updates
   useEffect(() => {
@@ -205,15 +204,7 @@ export default function InterviewDetailPage() {
       setActiveUser(true);
     });
 
-    vapi.on("call-start", async () => {
-      const vapiCallId = vapi.getCall()?.id;
-      if (vapiCallId && interviewId) {
-        try {
-          await saveVapiCall({ interviewId, vapiCallId })
-        } catch (error) {
-          console.error("Failed to save Vapi call ID:", error);
-        }
-      }
+    vapi.on("call-start", () => {
       console.log("Call started");
       toast.success("Interview Connected...");
     });
