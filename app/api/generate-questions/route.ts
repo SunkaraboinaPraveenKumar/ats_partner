@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
       .replace("{{jobTitle}}", jobTitle)
       .replace("{{jobDescription}}", jobDescription)
       .replace("{{duration}}", duration)
-      .replace("{{type}}", type);
+      .replace("{{type}}", type)
+      .replace("{{skills}}",skills)
+      .replace("{{resumeText}}",resumeText)
 
     // Optionally, append skills and resumeText to the prompt if needed
 
@@ -23,7 +25,7 @@ export async function POST(req: NextRequest) {
       messages: [
         { role: "system", content: prompt }
       ],
-      model: "llama-3.3-70b-versatile", // or your preferred model
+      model: "llama-3.1-8b-instant", // or your preferred model
       stream: false,
     });
 
