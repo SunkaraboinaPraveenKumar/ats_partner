@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Groq } from "groq-sdk";
 import { QuestionPrompt } from "../../../utils/prompts";
 
+export const maxDuration=30;
+
 export async function POST(req: NextRequest) {
   try {
     const { jobTitle, jobDescription, duration, type, skills, resumeText } = await req.json();
