@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState } from 'react';
 import JobPostFormModal from "./create-job-post-modal";
-import { FileText, Download, RefreshCw } from 'lucide-react';
+import { FileText, Download, RefreshCw, ExternalLink } from 'lucide-react';
 import { Id } from '@/convex/_generated/dataModel';
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import InterviewsForApplication from "./interviews-for-application";
+import Link from "next/link";
 
 interface JobPostingCardProps {
   job: {
@@ -89,7 +91,11 @@ const JobPostingCard: React.FC<JobPostingCardProps> = ({ job, refetchJobs }) => 
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-6 relative">
+        {/* Top-right applications link icon */}
+        <Link href={`/dashboard/recruiter/jobs/${job._id}/applications`} className="absolute top-3 right-3 text-primary hover:text-primary/80" title="View All Applications">
+          <ExternalLink className="h-5 w-5" />
+        </Link>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -189,6 +195,7 @@ const JobPostingCard: React.FC<JobPostingCardProps> = ({ job, refetchJobs }) => 
                         </Badge>
                       ))}
                     </div>
+                    <InterviewsForApplication applicationId={app._id} />
                   </Card>
                 ))}
                 {applications?.length === 0 && (
