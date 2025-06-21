@@ -214,7 +214,7 @@ export default function RecommendedJobsPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className=" mx-auto px-4 py-6 max-w-7xl">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">
               Recommended Jobs
@@ -225,7 +225,7 @@ export default function RecommendedJobsPage() {
           </div>
           <Button
             onClick={() => router.push('/dashboard/job-seeker')}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full md:w-auto"
           >
             <FileText className="h-4 w-4" />
             View All Jobs

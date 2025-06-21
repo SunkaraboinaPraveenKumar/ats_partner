@@ -5,8 +5,15 @@ import { FEEDBACK_PROMPT } from "../../../utils/prompts";
 export async function POST(req: NextRequest) {
   try {
     const { conversation } = await req.json();
-    console.log(conversation);
-    const prompt = FEEDBACK_PROMPT.replace("{{conversation}}", conversation);
+
+    // Format the conversation array into a readable string
+    const formattedConversation = conversation
+      .map((msg: { role: string; content: string }) => `${msg.role}: ${msg.content}`)
+      .join("\n");
+
+    const prompt = FEEDBACK_PROMPT.replace("{{conversation}}", formattedConversation);
+
+    console.log(prompt);
 
     const groq = new Groq({ apiKey: process.env.GROQ_API_KEY || "" });
 

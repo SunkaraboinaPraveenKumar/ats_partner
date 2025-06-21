@@ -155,11 +155,11 @@ function JobSeekerProfilePage() {
         <CardContent className="space-y-6">
           <div>
             <Label>Resume</Label>
-            <div className="mt-1 flex items-center gap-4">
+            <div className="mt-1 flex flex-col sm:flex-row items-center gap-4">
               {jobSeekerProfile?.fileUrl && (
                 <Dialog open={isPdfModalOpen} onOpenChange={setIsPdfModalOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" disabled={isUploading}>
+                    <Button variant="outline" disabled={isUploading} className="w-full sm:w-auto">
                       <EyeIcon className='h-5 w-5 mr-2' />
                       View Current Resume
                     </Button>
@@ -205,6 +205,7 @@ function JobSeekerProfilePage() {
                   variant="outline"
                   onClick={() => document.getElementById('resume-upload')?.click()}
                   disabled={isUploading}
+                  className="w-full sm:w-auto"
                 >
                   {isUploading ? (
                     <>
@@ -288,18 +289,18 @@ function JobSeekerProfilePage() {
 
           {applications && applications.length > 0 && (
             <BlurFade delay={0.4} duration={0.3} inView={true}>
-              <div>
+              <div className="grid gap-4">
                 <h3 className="text-xl font-semibold mb-3">Your Applications</h3>
                 <div className="space-y-4">
                   {applications.map((app) => (
-                    <Card key={app._id} className="p-4 flex justify-between items-start">
+                    <Card key={app._id} className="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div className="flex flex-col gap-1">
                         <p className="font-semibold text-lg">{app.jobPost?.title} at {app.jobPost?.company}</p>
                         <div className="text-sm text-muted-foreground">Status: <Badge variant={getStatusBadgeVariant(app.status)}>{app.status}</Badge></div>
                         <div className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-4 w-4" /> Applied on: {new Date(app._creationTime).toLocaleDateString()}</div>
                       </div>
-                      <Link href={`/dashboard/job-seeker/applications/${app._id}`} passHref>
-                        <Button variant="outline">
+                      <Link href={`/dashboard/job-seeker/applications/${app._id}`} passHref className="w-full sm:w-auto">
+                        <Button variant="outline" className="w-full">
                           View Application
                           <ExternalLink className="ml-2 h-4 w-4" />
                         </Button>

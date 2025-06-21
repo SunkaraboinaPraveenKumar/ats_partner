@@ -13,6 +13,7 @@ import { BlurFade } from "@/components/magicui/blur-fade";
 import React, { useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
 
 export default function ApplicationDetailPage() {
   const params = useParams();
@@ -87,9 +88,14 @@ export default function ApplicationDetailPage() {
                   <p className="flex items-center gap-2"><strong>Location:</strong> <MapPin className="h-4 w-4 text-primary" /> {jobPost.location}</p>
                   {jobPost.salary && <p className="flex items-center gap-2"><strong>Salary:</strong> <IndianRupee className="h-4 w-4 text-primary" /> {jobPost.salary}</p>}
                   <p><strong>Description:</strong> {jobPost.description}</p>
-                  <Link href={`/dashboard/job-seeker/jobs/${jobPost._id}`} className="text-primary hover:underline flex items-center gap-1 mt-2">
-                    View Original Job Post
-                  </Link>
+                  <div className="mt-4">
+                    <Link href={`/dashboard/job-seeker/jobs/${jobPost._id}`} passHref>
+                      <Button variant="outline">
+                        View Original Job Post
+                        <ExternalLink className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               </div>
             </BlurFade>

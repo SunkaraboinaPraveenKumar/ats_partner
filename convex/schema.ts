@@ -120,7 +120,10 @@ export default defineSchema({
       content: v.string(),
     })), // full transcript as array of message objects
     feedback: v.optional(v.any()), // JSON feedback
+    vapiCallId: v.optional(v.string()),
+    recordingUrl: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_applicationId", ["applicationId"]),
+  }).index("by_applicationId", ["applicationId"])
+    .index("by_vapiCallId", ["vapiCallId"]),
 });

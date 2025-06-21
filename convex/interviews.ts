@@ -126,6 +126,21 @@ export const updateInterviewConversation = mutation({
   },
 });
 
+// Add recording URL to interview
+export const addRecordingUrl = mutation({
+  args: {
+    interviewId: v.id("interviews"),
+    recordingUrl: v.string(),
+  },
+  async handler(ctx, args) {
+    await ctx.db.patch(args.interviewId, {
+      recordingUrl: args.recordingUrl,
+      updatedAt: Date.now(),
+    });
+    return true;
+  }
+});
+
 // Reset interview for retake (clear feedback, answers, conversation)
 export const resetInterview = mutation({
   args: { interviewId: v.id("interviews") },
