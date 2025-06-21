@@ -53,32 +53,12 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading })
 
   return (
     <div className="space-y-2">
-      {/* Quick suggestions */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          "Tell me more about this role",
-          "What\'s the company culture like?",
-          "What are the growth opportunities?",
-          "Can you explain the benefits?"
-        ].map((suggestion) => (
-          <button
-            key={suggestion}
-            onClick={() => {
-              setMessage(suggestion);
-            }}
-            className="text-xs px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            {suggestion}
-          </button>
-        ))}
-      </div>
-
       {/* Input area */}
-      <div className="flex items-end gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
+      <div className="flex items-end gap-2 sm:gap-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 sm:p-3 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
         {/* Attachment button */}
         <button
           type="button"
-          className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="flex-shrink-0 p-1 sm:p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Attach file"
         >
           <Paperclip className="h-5 w-5" />
@@ -88,7 +68,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading })
         <div className="flex-1 relative">
           <textarea
             ref={textareaRef}
-            placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+            placeholder="Type your message..."
             value={message}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
@@ -108,7 +88,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading })
         {/* Emoji button */}
         <button
           type="button"
-          className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="flex-shrink-0 p-1 sm:p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           title="Add emoji"
         >
           <Smile className="h-5 w-5" />
@@ -118,7 +98,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoading })
         <Button
           onClick={handleSend}
           disabled={!message.trim() || isLoading} // Use isLoading from props
-          className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white px-4 py-2"
+          className="flex-shrink-0 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white px-3 py-2 sm:px-4"
         >
           {isLoading ? (
             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

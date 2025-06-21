@@ -47,6 +47,7 @@ export default function InterviewDetailPage() {
   // Convex mutations
   const finalizeInterviewWithFeedback = useMutation(api.interviews.finalizeInterviewWithFeedback);
   const updateInterviewConversation = useMutation(api.interviews.updateInterviewConversation);
+  const saveVapiCall = useMutation(api.audio.saveVapiCall);
 
   // Log interview whenever it updates
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function InterviewDetailPage() {
     };
   }, [interviewId, isInterviewFinished, updateInterviewConversation]);
 
-  function startCall(questionsToAsk: any[]) {
+  async function startCall(questionsToAsk: any[]) {
     if (!questionsToAsk.length) return;
     
     const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY!);
@@ -163,7 +164,8 @@ export default function InterviewDetailPage() {
             content: `You are an AI voice assistant conducting interviews.\nYour job is to ask candidates provided interview questions, assess their responses.\nBegin the conversation with a friendly introduction, setting a relaxed yet professional tone.\nAsk one question at a time and wait for the candidate's response before proceeding. Keep the questions clear and concise.\nBelow are the questions: ${questionList}\nIf the candidate struggles, offer hints or rephrase the question without giving away the answer.\nProvide brief, encouraging feedback after each answer.\nKeep the conversation natural and engaging.\nAfter all questions, wrap up the interview smoothly by summarizing their performance.\nKey Guidelines:\n* Be friendly, engaging, and witty 😉\n* Keep responses short and natural, like a real conversation\n* Adapt based on the candidate's confidence level\n* Ensure the interview remains focused on the job.`
           }
         ]
-      }
+      },
+      webhook: `${process.env.NEXT_PUBLIC_APP_URL}/api/vapi-webhook`
     };
 
     // @ts-ignore
@@ -203,7 +205,15 @@ export default function InterviewDetailPage() {
       setActiveUser(true);
     });
 
-    vapi.on("call-start", () => {
+    vapi.on("call-start", async () => {
+      const vapiCallId = vapi.getCall()?.id;
+      if (vapiCallId && interviewId) {
+        try {
+          await saveVapiCall({ interviewId, vapiCallId });
+        } catch (error) {
+          console.error("Failed to save Vapi call ID:", error);
+        }
+      }
       console.log("Call started");
       toast.success("Interview Connected...");
     });
@@ -510,6 +520,14 @@ export default function InterviewDetailPage() {
                   
                   {fb ? (
                     <div className="space-y-6">
+                      {interview?.recordingUrl && (
+                        <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                          <h4 className="font-semibold text-gray-800 dark:text-white">Interview Recording</h4>
+                          <audio controls src={interview.recordingUrl} className="w-full rounded-md">
+                            Your browser does not support the audio element.
+                          </audio>
+                        </div>
+                      )}
                       {/* Recommendation Badge */}
                       <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                         <Badge 

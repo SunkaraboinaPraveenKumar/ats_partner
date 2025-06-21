@@ -15,6 +15,7 @@ import type {
 } from "convex/server";
 import type * as action from "../action.js";
 import type * as applications from "../applications.js";
+import type * as audio from "../audio.js";
 import type * as auth from "../auth.js";
 import type * as files from "../files.js";
 import type * as interviews from "../interviews.js";
@@ -37,6 +38,7 @@ import type * as utils from "../utils.js";
 declare const fullApi: ApiFromModules<{
   action: typeof action;
   applications: typeof applications;
+  audio: typeof audio;
   auth: typeof auth;
   files: typeof files;
   interviews: typeof interviews;

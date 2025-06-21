@@ -62,11 +62,11 @@ export default function RecruiterDashboard() {
   }
 
   return (
-    <div className=" py-8">
+    <div className="py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold">Job Postings</h1>
-          <Button onClick={handleNewJobPost} disabled={isLoading || jobPostings === undefined}>
+          <Button onClick={handleNewJobPost} disabled={isLoading || jobPostings === undefined} className="w-full sm:w-auto">
             {isLoading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
