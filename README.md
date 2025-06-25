@@ -2,21 +2,60 @@
 
 ## AI-Powered Recruitment Platform
 
-SwipeIt revolutionizes the recruitment process by using AI to semantically match job seekers with recruiters, going beyond traditional keyword matching.
+SwipeIt revolutionizes the recruitment process by leveraging AI for deep semantic matching, automated interviews, and a modern, intuitive experience for both job seekers and recruiters.
+
+---
 
 ## Features
 
--   **Semantic Matching:** Our AI understands the context in job descriptions and resumes by creating embeddings (vector representations) and calculating their cosine similarity to find the most relevant matches.
--   **Swipe-Based Interface:** Intuitive swipe interface for both job seekers and recruiters, making the matching process engaging and efficient.
--   **Attitude Matching:** Find candidates that fit not just the skills, but also the company culture and work environment.
--   **Blind Hiring Mode:** Reduce bias in your recruitment process with our unique blind hiring mode that focuses on skills, not demographics.
--   **Real-Time Chat:** Connect with matched candidates or recruiters instantly through our integrated real-time messaging system.(Yet to come).
+- **AI-Powered Semantic Matching:**
+  - Uses advanced embeddings and cosine similarity to match candidates and jobs based on true context, not just keywords.
+- **Swipe-Based Interface:**
+  - Engaging swipe UI for both job seekers and recruiters to quickly browse and act on matches.
+- **Attitude & Blind Hiring:**
+  - Attitude/culture fit matching and a blind mode to reduce bias and promote fair hiring.
+- **AI-Powered Interviews:**
+  - Automated, voice-based interviews conducted by an AI recruiter.
+  - Each interview is recorded, transcribed, and evaluated by AI.
+  - Automatic feedback with ratings (communication, technical skills, problem solving, experience), summary, and recommendation.
+  - Recruiters can view all interviews for each application, with detailed feedback and transcripts.
+  - Dedicated recruiter pages for all applications of a job and all interviews of an application.
+  - Quick navigation via icons for interview and application details.
+- **Recruiter Dashboard:**
+  - Manage job postings.
+  - View all applications for each job (modal or dedicated page).
+  - Drill down to all interviews and feedback for each application.
+  - See candidate status, resume, and AI feedback at a glance.
+- **Job Seeker Dashboard:**
+  - Track all applications and interviews.
+  - View detailed AI feedback and ratings for completed interviews.
+- **Real-Time Messaging:**
+  - (Planned/partially implemented) Chat between job seekers and recruiters.
+- **Resume Parsing & AI Feedback:**
+  - Upload resumes, get parsed data, and receive AI-generated feedback.
+- **Modern UI:**
+  - Built with Tailwind CSS, Radix UI, and custom components for a seamless, responsive experience.
+- **Authentication:**
+  - Secure login and signup with NextAuth.js.
+- **Convex Backend:**
+  - Real-time, serverless backend for data and business logic.
+
+---
 
 ## How It Works
 
-1.  **Create Your Profile:** Upload your resume or create a job posting with our easy-to-use interface.
-2.  **AI Analysis:** Our AI analyzes and understands the context behind your skills or job requirements by generating embeddings.
-3.  **Start Matching:** Swipe through AI-recommended matches, ranked by cosine similarity, and connect with your perfect fit.
+1. **Create Your Profile or Job Posting:**
+   - Job seekers upload resumes; recruiters create job posts.
+2. **AI Analysis:**
+   - The platform analyzes and understands the context behind skills and job requirements using embeddings.
+3. **Start Matching:**
+   - Swipe through AI-recommended matches, ranked by relevance.
+4. **Interview & Feedback:**
+   - Candidates can take AI-powered interviews; recruiters review detailed feedback and transcripts.
+5. **Connect & Hire:**
+   - Use messaging (coming soon) and dashboards to manage the hiring process end-to-end.
+
+---
 
 ## Folder Structure
 
@@ -44,111 +83,97 @@ SwipeIt revolutionizes the recruitment process by using AI to semantically match
 │   └── ... (custom React hooks)
 ├── lib/
 │   └── ... (utility functions and libraries)
-├── store/
-│   └── ... (Zustand store files)
-├── .git/
-├── .gitignore
-├── .eslintrc.json
-├── components.json
-├── improve
-├── next-env.d.ts
-├── next.config.js
-├── package-lock.json
-├── package.json
-├── postcss.config.js
 ├── public/
 │   └── ... (static assets)
-├── README.md
+├── types/
+│   └── ... (TypeScript type definitions)
+├── utils/
+│   └── ... (AI prompts, assistant options)
+├── package.json
 ├── tailwind.config.ts
 └── tsconfig.json
 ```
 
+---
+
 ## Technologies Used
 
--   Next.js
--   React
--   TypeScript
--   Convex (Backend)
--   Google GenAI (Resume and Job Description embeddings)
--   Langchain
--   Tailwind CSS (for styling)
--   Radix UI (for UI components)
--   Zustand (for state management)
--   React Hook Form (for form handling)
+- **Next.js** (App Router)
+- **React** (with hooks)
+- **TypeScript**
+- **Convex** (serverless backend, real-time data)
+- **Tailwind CSS** (utility-first styling)
+- **Radix UI** (accessible UI primitives)
+- **shadcn/ui** (custom UI components)
+- **NextAuth.js** (authentication)
+- **Langchain** (AI/LLM orchestration)
+- **Google GenAI** (embeddings for semantic matching)
+- **Zustand** (state management)
+- **React Hook Form** (form handling)
+
+---
 
 ## Setup
 
-1.  Clone the repository:
-
+1. **Clone the repository:**
     ```bash
     git clone <repository_url>
     ```
-
-2.  Navigate to the project directory:
-
+2. **Navigate to the project directory:**
     ```bash
     cd SwipeIt
     ```
-
-3.  Install dependencies:
-
+3. **Install dependencies:**
     ```bash
     npm install
-    ```
-    or
-    ```bash
+    # or
     yarn install
-    ```
-    or
-    ```bash
+    # or
     pnpm install
     ```
-
-4.  Set up Convex:
-    -   Install the Convex CLI:
-        ```bash
-        npm install -g convex-cli
-        ```
-    -   Log in to Convex:
-        ```bash
-        convex login
-        ```
-    -   Deploy your Convex backend:
-        ```bash
-        convex deploy
-        ```
-    -   Get your Convex deployment URL and add it to your environment variables (e.g., in a `.env.local` file).
-
-5.  Set up Google GenAI and Langchain:
-    -   Obtain API keys for Google GenAI and configure them in your environment variables.
-    -   Refer to the relevant documentation for specific Langchain integrations and setup.
-
-6.  Run the development server:
-
+4. **Set up Convex:**
+    - Install the Convex CLI:
+      ```bash
+      npm install -g convex-cli
+      ```
+    - Log in to Convex:
+      ```bash
+      convex login
+      ```
+    - Deploy your Convex backend:
+      ```bash
+      convex deploy
+      ```
+    - Add your Convex deployment URL to your environment variables (e.g., `.env.local`).
+5. **Set up Google GenAI and Langchain:**
+    - Obtain API keys and configure them in your environment variables.
+    - Refer to the relevant documentation for specific Langchain integrations and setup.
+6. **Run the development server:**
     ```bash
     npm run dev
-    ```
-    or
-    ```bash
+    # or
     yarn dev
-    ```
-    or
-    ```bash
+    # or
     pnpm dev
     ```
+7. **Open [http://localhost:3000](http://localhost:3000) in your browser.**
 
-7.  Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
 ## Scripts
 
--   `npm run dev`: Runs the development server.
--   `npm run build`: Builds the application for production.
--   `npm run start`: Starts the production server.
--   `npm run lint`: Lints the project.
+- `npm run dev`: Runs the development server.
+- `npm run build`: Builds the application for production.
+- `npm run start`: Starts the production server.
+- `npm run lint`: Lints the project.
+
+---
 
 ## Contributing
 
-(Add contributing guidelines here)
+We welcome contributions! Please open issues or pull requests for new features, bug fixes, or improvements.
+
+---
 
 ## License
 
